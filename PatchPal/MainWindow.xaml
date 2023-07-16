@@ -1,0 +1,304 @@
+﻿<Window x:Class="Mooseware.PatchPal.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:local="clr-namespace:Mooseware.PatchPal"
+        mc:Ignorable="d"
+        Title="Patch Pal - Video Matrix and Patch Panel Guide"
+        Height="450"
+        Width="1200"
+        Loaded="Window_Loaded">
+    <Grid>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="1*" />
+        </Grid.ColumnDefinitions>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="1*" />
+        </Grid.RowDefinitions>
+        <TabControl x:Name="TabList"
+                    TabStripPlacement="Bottom"
+                    SelectionChanged="TabList_SelectionChanged">
+            <TabItem x:Name="MatrixTabItem"
+                     Header="Matrix"
+                     SizeChanged="MatrixTabItem_SizeChanged">
+                <Grid x:Name="MatrixTabContentGrid"
+                      Background="LightGray">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="150" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="221" />
+                    </Grid.ColumnDefinitions>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="18" />
+                        <RowDefinition Height="26" />
+                        <RowDefinition Height="18" />
+                        <RowDefinition Height="*" />
+                        <RowDefinition Height="26" />
+                        <RowDefinition Height="18" />
+                        <RowDefinition Height="18" />
+                    </Grid.RowDefinitions>
+                    <TextBlock Text="Destinations"
+                               Grid.Row="1"
+                               Grid.Column="0"
+                               FontSize="18"
+                               FontWeight="Bold"
+                               Margin="10,0,0,0"
+                               TextAlignment="Left" />
+                    <TextBlock Text="(Patched to MX Outputs)"
+                               Grid.Row="2"
+                               Grid.Column="0"
+                               FontSize="12"
+                               FontWeight="Regular"
+                               Margin="10,0,0,0"
+                               TextAlignment="Left" />
+                    <TextBlock Text="Sources"
+                               Grid.Row="4"
+                               Grid.Column="0"
+                               FontSize="18"
+                               FontWeight="Bold"
+                               Margin="10,0,0,0"
+                               TextAlignment="Left" />
+                    <TextBlock Text="(Patched to MX Inputs)"
+                               Grid.Row="5"
+                               Grid.Column="0"
+                               FontSize="12"
+                               FontWeight="Regular"
+                               Margin="10,0,0,0"
+                               TextAlignment="Left" />
+                    <Canvas x:Name="MatrixCanvas"
+                            Grid.Row="0"
+                            Grid.Column="1"
+                            Grid.RowSpan="7"
+                            Background="LightGray"
+                            MouseDown="MatrixCanvas_MouseDown" />
+                    <Grid x:Name="MatrixSelectionVerticalCenterer"
+                          Grid.Row="1"
+                          Grid.RowSpan="5"
+                          Height="Auto"
+                          Grid.Column="2">
+                        <StackPanel x:Name="MatrixSelectionStackPanel"
+                                    Height="Auto"
+                                    Orientation="Vertical"
+                                    VerticalAlignment="Center">
+                            <GroupBox BorderThickness="1"
+                                      BorderBrush="Black"
+                                      Header="Video Matrix Selection"
+                                      FontWeight="Bold"
+                                      Margin="0 0 10 0">
+                                <StackPanel x:Name="MatrixSelectionDisplayStackPanel"
+                                            Orientation="Vertical">
+                                    <StackPanel x:Name="MatrixDestinationsStackPanel"
+                                                Orientation="Horizontal">
+                                        <Border x:Name="MatrixDestination1Indicator"
+                                                BorderBrush="Black"
+                                                BorderThickness="1"
+                                                Background="WhiteSmoke"
+                                                Height="40"
+                                                Width="40"
+                                                Margin="5">
+                                            <TextBlock Text="1"
+                                                       VerticalAlignment="Center"
+                                                       HorizontalAlignment="Center"
+                                                       FontSize="22"
+                                                       FontWeight="Normal"
+                                                       Foreground="Black" />
+                                        </Border>
+                                        <Border x:Name="MatrixDestination2Indicator"
+                                                BorderBrush="Black"
+                                                BorderThickness="1"
+                                                Background="WhiteSmoke"
+                                                Height="40"
+                                                Width="40"
+                                                Margin="5">
+                                            <TextBlock Text="2"
+                                                       VerticalAlignment="Center"
+                                                       HorizontalAlignment="Center"
+                                                       FontSize="22"
+                                                       FontWeight="Normal"
+                                                       Foreground="Black" />
+                                        </Border>
+                                        <Border x:Name="MatrixDestination3Indicator"
+                                                BorderBrush="Black"
+                                                BorderThickness="1"
+                                                Background="WhiteSmoke"
+                                                Height="40"
+                                                Width="40"
+                                                Margin="5">
+                                            <TextBlock Text="3"
+                                                       VerticalAlignment="Center"
+                                                       HorizontalAlignment="Center"
+                                                       FontSize="22"
+                                                       FontWeight="Normal"
+                                                       Foreground="Black" />
+                                        </Border>
+                                        <Border x:Name="MatrixDestination4Indicator"
+                                                BorderBrush="Black"
+                                                BorderThickness="1"
+                                                Background="WhiteSmoke"
+                                                Height="40"
+                                                Width="40"
+                                                Margin="5">
+                                            <TextBlock Text="4"
+                                                       VerticalAlignment="Center"
+                                                       HorizontalAlignment="Center"
+                                                       FontSize="22"
+                                                       FontWeight="Normal"
+                                                       Foreground="Black" />
+                                        </Border>
+                                    </StackPanel>
+                                    <StackPanel x:Name="MatrixSourcesStackPanel"
+                                                Orientation="Horizontal">
+                                        <Border x:Name="MatrixSource1Indicator"
+                                                BorderBrush="Black"
+                                                BorderThickness="1"
+                                                Background="WhiteSmoke"
+                                                Height="40"
+                                                Width="40"
+                                                Margin="5">
+                                            <TextBlock x:Name="MatrixSource1SelectionText"
+                                                       Text="1"
+                                                       VerticalAlignment="Center"
+                                                       HorizontalAlignment="Center"
+                                                       FontSize="22"
+                                                       FontWeight="Normal"
+                                                       Foreground="Black" />
+                                        </Border>
+                                        <Border x:Name="MatrixSource2Indicator"
+                                                BorderBrush="Black"
+                                                BorderThickness="1"
+                                                Background="WhiteSmoke"
+                                                Height="40"
+                                                Width="40"
+                                                Margin="5">
+                                            <TextBlock x:Name="MatrixSource2SelectionText"
+                                                       Text="2"
+                                                       VerticalAlignment="Center"
+                                                       HorizontalAlignment="Center"
+                                                       FontSize="22"
+                                                       FontWeight="Normal"
+                                                       Foreground="Black" />
+                                        </Border>
+                                        <Border x:Name="MatrixSource3Indicator"
+                                                BorderBrush="Black"
+                                                BorderThickness="1"
+                                                Background="WhiteSmoke"
+                                                Height="40"
+                                                Width="40"
+                                                Margin="5">
+                                            <TextBlock x:Name="MatrixSource3SelectionText"
+                                                       Text="3"
+                                                       VerticalAlignment="Center"
+                                                       HorizontalAlignment="Center"
+                                                       FontSize="22"
+                                                       FontWeight="Normal"
+                                                       Foreground="Black" />
+                                        </Border>
+                                        <Border x:Name="MatrixSource4Indicator"
+                                                BorderBrush="Black"
+                                                BorderThickness="1"
+                                                Background="WhiteSmoke"
+                                                Height="40"
+                                                Width="40"
+                                                Margin="5">
+                                            <TextBlock x:Name="MatrixSource4SelectionText"
+                                                       Text="4"
+                                                       VerticalAlignment="Center"
+                                                       HorizontalAlignment="Center"
+                                                       FontSize="22"
+                                                       FontWeight="Normal"
+                                                       Foreground="Black" />
+                                        </Border>
+                                    </StackPanel>
+                                </StackPanel>
+                            </GroupBox>
+                            <!-- GROUP BOX FOR ATEM AUX OUT SELECTION GOES HERE -->
+                        </StackPanel>
+                    </Grid>
+                </Grid>
+            </TabItem>
+            <TabItem x:Name="PatchTabItem"
+                     Header="Patch"
+                     SizeChanged="PatchTabItem_SizeChanged">
+
+                <Grid x:Name="PatchTabContentGrid"
+                      Background="LightGray">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="26" />
+                        <RowDefinition Height="18" />
+                        <RowDefinition Height="*" />
+                    </Grid.RowDefinitions>
+                    <TextBlock Text="Sources"
+                               Grid.Row="0"
+                               Grid.Column="0"
+                               FontSize="18"
+                               FontWeight="Bold"
+                               Margin="10,0,0,0"
+                               TextAlignment="Left" />
+                    <TextBlock Text="(MX: Outputs)"
+                               Grid.Row="1"
+                               Grid.Column="0"
+                               FontSize="12"
+                               FontWeight="Regular"
+                               Margin="10,0,0,0"
+                               TextAlignment="Left" />
+                    <TextBlock Text="Sinks"
+                               Grid.Row="0"
+                               Grid.Column="2"
+                               FontSize="18"
+                               FontWeight="Bold"
+                               Margin="0,0,10,0"
+                               TextAlignment="Right" />
+                    <TextBlock Text="(MX: Inputs)"
+                               Grid.Row="1"
+                               Grid.Column="2"
+                               FontSize="12"
+                               FontWeight="Regular"
+                               Margin="0,0,10,0"
+                               TextAlignment="Right" />
+                    <StackPanel x:Name="PatchCommandButtons"
+                                Orientation="Horizontal"
+                                Grid.Row="0"
+                                Grid.RowSpan="2"
+                                Grid.Column="1"
+                                HorizontalAlignment="Center">
+                        <Button x:Name="PatchConnectButton"
+                                Grid.Column="1"
+                                Content="Connect"
+                                Background="LawnGreen"
+                                Margin="3"
+                                HorizontalAlignment="Center"
+                                Width="100"
+                                Click="PatchConnectButton_Click" />
+                        <Button x:Name="PatchDisconnectButton"
+                                Grid.Column="1"
+                                Content="Disconnect"
+                                Background="Red"
+                                Margin="3"
+                                HorizontalAlignment="Center"
+                                Width="100"
+                                Click="PatchDisconnectButton_Click" />
+                    </StackPanel>
+                    <Canvas x:Name="PatchCanvas"
+                            Width="{Binding ElementName=root, Path=ActualWidth}"
+                            Height="{Binding ElementName=root, Path=ActualHeight}"
+                            Background="LightGray"
+                            MouseDown="PatchCanvas_MouseDown"
+                            Grid.Column="0"
+                            Grid.Row="2"
+                            Grid.ColumnSpan="3">
+                    </Canvas>
+                </Grid>
+            </TabItem>
+            <TabItem x:Name="SettingsTabItem"
+                     Header="Settings">
+
+            </TabItem>
+        </TabControl>
+    </Grid>
+</Window>
