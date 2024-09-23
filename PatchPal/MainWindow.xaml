@@ -6,8 +6,8 @@
         xmlns:local="clr-namespace:Mooseware.PatchPal"
         mc:Ignorable="d"
         Title="Patch Pal - Video Matrix and Patch Panel Guide"
-        Height="450"
-        Width="1200"
+        Height="500"
+        Width="1400"
         Loaded="Window_Loaded">
     <Grid>
         <Grid.ColumnDefinitions>
@@ -296,7 +296,8 @@
                 </Grid>
             </TabItem>
             <TabItem x:Name="SettingsTabItem"
-                     Header="Settings">
+                     Header="Settings"
+                     Visibility="Hidden">
 
             </TabItem>
         </TabControl>

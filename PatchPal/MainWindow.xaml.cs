@@ -12,6 +12,7 @@ using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Navigation;
 using System.Windows.Shapes;
+using Mooseware.ClipRunner.AtemApi;
 
 namespace Mooseware.PatchPal
 {
@@ -23,11 +24,11 @@ namespace Mooseware.PatchPal
         /// <summary>
         /// The list of VideoNode objects which cannot be changed by the user at runtime. These are physically connected at build time.
         /// </summary>
-        readonly Dictionary<NodeId,VideoNode> hardwiredNodes = new();
+        readonly Dictionary<NodeId, VideoNode> hardwiredNodes = new();
         /// <summary>
         /// The list of VideoNode objects which can be configured by the user at runtime. Inclues HDMI patch cables and video matrix selections.
         /// </summary>
-        readonly Dictionary<NodeId,VideoNode> configuredNodes = new();
+        readonly Dictionary<NodeId, VideoNode> configuredNodes = new();
 
         /// <summary>
         /// The NodeId of the currently selected patch panel source VideoNode, if any.
@@ -113,6 +114,13 @@ namespace Mooseware.PatchPal
         /// </summary>
         private readonly SolidColorBrush InactiveMatrixConnection = new(Color.FromRgb(0xe0, 0xe0, 0xe0));
 
+        // TODO: Add the ATEM object back in once I figure out how to use it.
+        // TODO: Consider doing direct manipulation of the BMD API like TimeToAir instead.
+        ///// <summary>
+        ///// The ATEM Switcher controller which wraps the necessary parts of the ATEM API
+        ///// </summary>
+        //private Switcher? _atemSwitcher;
+
         public MainWindow()
         {
             InitializeComponent();
@@ -123,6 +131,14 @@ namespace Mooseware.PatchPal
             LoadNodeConfiguration();
             DrawMatrixCanvas();
             SetPatchCmdButtonStatus();
+
+            // TODO: Figure out how to get the current Aux Out selection info, if it's available.
+            //_atemSwitcher = new Switcher(atemIpAddress: "192.168.0.240");
+            //if (_atemSwitcher.IsReady)
+            //{
+            //    var inputs = _atemSwitcher.ListSwitcherInputs;
+            //    int gar = 0;
+            //}
         }
 
         /// <summary>
@@ -210,7 +226,7 @@ namespace Mooseware.PatchPal
                     IsFilled = false
                 };
                 figure.Segments.Clear();
-                figure.Segments.Add(new LineSegment(new Point(0.0, (cable * cableOffset)-patchRadius),true));
+                figure.Segments.Add(new LineSegment(new Point(0.0, (cable * cableOffset) - patchRadius), true));
                 figure.Segments.Add(new ArcSegment(new Point(patchRadius, (cable * cableOffset)),
                     new Size(patchRadius, patchRadius), 90.0, false, SweepDirection.Counterclockwise, true));
                 figure.Segments.Add(new LineSegment(new Point(endingPoint.X - startingPoint.X - patchRadius, (cable * cableOffset)), true));
@@ -249,13 +265,13 @@ namespace Mooseware.PatchPal
             // Find the patch container and get the point which is the center of it's bottom line...
             foreach (var item in PatchCanvas.Children)
             {
-                if (item.GetType()==typeof(Grid))
+                if (item.GetType() == typeof(Grid))
                 {
                     Grid hit = (Grid)item;
                     if (hit.Name == nodeId.ToString() + "Container")
                     {
                         // This is the one. What is the middle point of the bottom...
-                        double bottom = (double)hit.GetValue(Canvas.TopProperty) 
+                        double bottom = (double)hit.GetValue(Canvas.TopProperty)
                             + (double)hit.GetValue(Canvas.HeightProperty);
                         double halfWayOver = (double)hit.GetValue(Canvas.LeftProperty)
                             + ((double)hit.GetValue(Canvas.WidthProperty) / 2);
@@ -293,7 +309,10 @@ namespace Mooseware.PatchPal
                 IsHitTestVisible = true
             };
             // Colour scheme depends on type and state of the patch...
-            if (patchNode.Id == NodeId.ExternalPseudoPatch)
+            if (patchNode.Id == NodeId.ExternalPseudoPatch
+             || patchNode.Id == NodeId.SplitterInputPatch
+             || patchNode.Id == NodeId.SplitterOutput1Patch
+             || patchNode.Id == NodeId.SplitterOutput2Patch)
             {
                 patchBox.Fill = Brushes.Gray;
                 patchBox.Stroke = Brushes.Black;
@@ -307,8 +326,8 @@ namespace Mooseware.PatchPal
                 }
                 else
                 {
-                    patchBox.Fill = new SolidColorBrush(Color.FromArgb(0x99,0xFF,0xFF,0x00));   // Yellow with alpha
-                    patchBox.Stroke = new SolidColorBrush(Color.FromRgb(80,80,80));
+                    patchBox.Fill = new SolidColorBrush(Color.FromArgb(0x99, 0xFF, 0xFF, 0x00));   // Yellow with alpha
+                    patchBox.Stroke = new SolidColorBrush(Color.FromRgb(80, 80, 80));
                 }
             }
             else if (patchNode.Type == NodeType.PatchSink)
@@ -320,7 +339,7 @@ namespace Mooseware.PatchPal
                 }
                 else
                 {
-                    patchBox.Fill = new SolidColorBrush(Color.FromArgb(0x99,0xFF,0xA5,0x00));   // Orange with alpha
+                    patchBox.Fill = new SolidColorBrush(Color.FromArgb(0x99, 0xFF, 0xA5, 0x00));   // Orange with alpha
                     patchBox.Stroke = Brushes.DimGray;  // new SolidColorBrush(Color.FromRgb(80, 80, 80));
                 }
             }
@@ -339,7 +358,10 @@ namespace Mooseware.PatchPal
                 IsHitTestVisible = false,
                 Name = patchNode.Id.ToString() + NodeLabelTag
             };
-            if (patchNode.Id == NodeId.ExternalPseudoPatch)
+            if (patchNode.Id == NodeId.ExternalPseudoPatch
+             || patchNode.Id == NodeId.SplitterInputPatch
+             || patchNode.Id == NodeId.SplitterOutput1Patch
+             || patchNode.Id == NodeId.SplitterOutput2Patch)
             {
                 patchText.Foreground = Brushes.White;
             }
@@ -413,7 +435,7 @@ namespace Mooseware.PatchPal
                 {
                     if (!Enum.TryParse<NodeId>(item.Input, out var inputNodeId))
                     {
-                        inputNodeId = NodeId.Undefined; 
+                        inputNodeId = NodeId.Undefined;
                     }
                     if (!Enum.TryParse<NodeId>(item.Output, out var outputNodeId))
                     {
@@ -719,7 +741,7 @@ namespace Mooseware.PatchPal
             if (hardwiredNodes.ContainsKey(selectedNodeId))
             {
                 selectedNode = hardwiredNodes[selectedNodeId];
-            }   
+            }
             else if (configuredNodes.ContainsKey(selectedNodeId))
             {
                 selectedNode = configuredNodes[selectedNodeId];
@@ -870,7 +892,7 @@ namespace Mooseware.PatchPal
                         Path.StrokeThickness = HdmiSelectedStrokeThickness;
                     }
                 }
-                _selectedHdmiPatch = affectedHdmiPatch; 
+                _selectedHdmiPatch = affectedHdmiPatch;
                 if (affectedSinkPatch != NodeId.Undefined)
                 {
                     Rectangle? rectangle = FindGridRectangleByPatchId(PatchCanvas, affectedSinkPatch);
@@ -968,7 +990,7 @@ namespace Mooseware.PatchPal
              && _selectedHdmiPatch == NodeId.Undefined)
             {
                 // Find an unused HDMI patch node
-                var hdmi =  GetUnusedHdmiPatchNode()
+                var hdmi = GetUnusedHdmiPatchNode()
 ;
                 if (hdmi != null)
                 {
@@ -1015,7 +1037,7 @@ namespace Mooseware.PatchPal
         {
             VideoNode? result = null;
 
-            foreach (NodeId nodeId in (NodeId[]) Enum.GetValues(typeof(NodeId)))
+            foreach (NodeId nodeId in (NodeId[])Enum.GetValues(typeof(NodeId)))
             {
                 if (Node.Type(nodeId) == NodeType.HdmiCable && !configuredNodes.ContainsKey(nodeId))
                 {
@@ -1060,15 +1082,38 @@ namespace Mooseware.PatchPal
                 .OrderBy(n => n.DisplayOrder)
                 .ToList();
 
+            // Go through all of the video destinations and get a list of everything
+            // that has a MxOutput upstream of it somehow.
+            List<VideoNode> connectedMxDestinations = new();
+            foreach (var node in destinationNodes)
+            {
+                VideoNode? upstreamMxOutput = node.UpstreamMxOutput;
+                if (upstreamMxOutput != null && connectedMxDestinations.Contains(upstreamMxOutput) == false)
+                {
+                    connectedMxDestinations.Add(upstreamMxOutput);
+                }
+            }
+
+            // Figure out which NodeType.MxOutput nodes are not connected and should be shown as parked.
+            List<VideoNode> parkedMxOutputNodes = new();
+
             var mxOutNodes = hardwiredNodes.Values
                 .Where(n => n.Type == NodeType.MxOutput)
                 .OrderBy(n => n.DisplayOrder)
                 .ToList();
+            // Append any parked outputs to parkedMxOutNodes
+            foreach (var mxOutNode in mxOutNodes)
+            {
+                if (connectedMxDestinations.Contains(mxOutNode) == false)
+                {
+                    parkedMxOutputNodes.Add(mxOutNode);
+                }
+            }
 
             var mxInNodes = hardwiredNodes.Values
-                .Where(n => n.Type == NodeType.MxInput)
-                .OrderByDescending(n => n.DisplayOrder)     // Descending so that parked nodes are in logical order
-                .ToList();
+            .Where(n => n.Type == NodeType.MxInput)
+            .OrderByDescending(n => n.DisplayOrder)     // Descending so that parked nodes are in logical order
+            .ToList();
 
             var sourceNodes = hardwiredNodes.Values
                 .Where(n => n.Type == NodeType.VideoSource)
@@ -1119,44 +1164,39 @@ namespace Mooseware.PatchPal
                 MatrixCanvas.Children.Add(sourceContainer);
             }
 
-            int parkedMxOutputs = 0;
-            foreach (var videoNode in mxOutNodes)
+            // Handle painting of the MxOutput nodes that are connected.
+            foreach (var destVideoNode in destinationNodes)
             {
-                // NOTE: This is more complicated than for MxOutputs because there is no single, reliable .Downstream
-                //       property on VideoNode.  However, if we know that we're starting with a MxOutput then we
-                //       know that we can reliably follow the .Output all the way to the end.
-                Grid mxOutContainer = BuildMxInOutNode(videoNode, matrixNodeDiameter, matrixLabelFontSize);
-                // Where does this node belong? Is it on a Destination or is it parked?
-                bool parked = true;
-                VideoNode? downstream = videoNode.Output;
-                while (downstream != null)
+                var videoNode = destVideoNode.UpstreamMxOutput;
+                if (videoNode != null)
                 {
-                    if (downstream.Type == NodeType.VideoDestination)
-                    {
-                        parked = false;
-                        break;
-                    }
-                    downstream = downstream.Output;
-                }
-                // So where is the MX output to be positioned?
-                if (parked)
-                {
-                    Canvas.SetTop(mxOutContainer, destinationRowTop + (parkedMxOutputs * (matrixNodeDiameter + matrixMargin)));
-                    Canvas.SetLeft(mxOutContainer, MatrixCanvas.ActualWidth - (matrixNodeDiameter + (2 * matrixMargin)));
-                    parkedMxOutputs++;
-                }
-                else
-                {
+                    // NOTE: This is more complicated than for MxOutputs because there is no single, reliable .Downstream
+                    //       property on VideoNode.  However, if we know that we're starting with a MxOutput then we
+                    //       know that we can reliably follow the .Output all the way to the end.
+                    Grid mxOutContainer = BuildMxInOutNode(videoNode, matrixNodeDiameter, matrixLabelFontSize);
+                    VideoNode? downstream = videoNode.Output;
                     if (downstream != null)
                     {
-                        Point location = GetMatrixNodeCnxPoint(downstream.Id);
+                        Point location = GetMatrixNodeCnxPoint(destVideoNode.Id);
                         Canvas.SetTop(mxOutContainer, location.Y);
                         Canvas.SetLeft(mxOutContainer, location.X - (matrixNodeDiameter / 2));
                     }
+                    MatrixCanvas.Children.Add(mxOutContainer);
                 }
-                MatrixCanvas.Children.Add(mxOutContainer);
             }
 
+            // Handle painting of parked MxOutput nodes.
+            int parkedMxOutputsSoFar = 0;
+            foreach (var parkedMxOutputNode in parkedMxOutputNodes)
+            {
+                Grid mxOutContainer = BuildMxInOutNode(parkedMxOutputNode, matrixNodeDiameter, matrixLabelFontSize);
+                Canvas.SetTop(mxOutContainer, destinationRowTop + (parkedMxOutputsSoFar * (matrixNodeDiameter + matrixMargin)));
+                Canvas.SetLeft(mxOutContainer, MatrixCanvas.ActualWidth - (matrixNodeDiameter + (2 * matrixMargin)));
+                MatrixCanvas.Children.Add(mxOutContainer);
+                parkedMxOutputsSoFar++;
+            }
+
+            // Handle the painting of MxInput nodes
             int parkedMxInputs = 0;
             foreach (var videoNode in mxInNodes)
             {
@@ -1213,57 +1253,50 @@ namespace Mooseware.PatchPal
                 {
                     startingPoint = GetMatrixNodeCnxPoint(mxSelection.Input.Id);
                 }
-                if (mxSelection.Output != null)
+
+                // Get every output for the selection.
+                var mxSelectedOutputs = hardwiredNodes
+                    .Where(n => n.Value.UpstreamMxOutput == mxSelection.Output 
+                             && n.Value.Type == NodeType.VideoDestination);
+                foreach (var mxSelectionOutput in mxSelectedOutputs)
                 {
-                    bool parked = true;
-                    VideoNode? downstream = mxSelection.Output;
-                    while (downstream != null)
+                    endingPoint = GetMatrixNodeCnxPoint(mxSelectionOutput.Value.Id);
+                    // Adjust the Y value of the end point to account for node diameter.
+                    endingPoint.Y += matrixNodeDiameter / 2.0; ;
+
+                    // Work out the adjustment to get from the centre of each mx node to it's edge.
+                    // NOTE: The starting point is always below the ending point (so Y is bigger at bottom, thanks WPF).
+                    // NOTE: If the line is vertical then it's just the Y adjusted by the radius.
+                    double dX = 0.0;
+                    double dY = 0.0;
+
+                    if (Math.Abs(endingPoint.X - startingPoint.X) < 0.1)
                     {
-                        if (downstream.Type == NodeType.VideoDestination)
-                        {
-                            parked = false;
-                            break;
-                        }
-                        downstream = downstream.Output;
+                        dY = matrixNodeDiameter / 2.0;      // dX = 0.0. No need for ATAN
                     }
-                    if (!parked && downstream != null)
+                    else
                     {
-                        endingPoint = GetMatrixNodeCnxPoint(mxSelection.Output.Id);
-
-                        // Work out the adjustment to get from the centre of each mx node to it's edge.
-                        // NOTE: The starting point is always below the ending point (so Y is bigger at bottom, thanks WPF).
-                        // NOTE: If the line is vertical then it's just the Y adjusted by the radius.
-                        double dX = 0.0;
-                        double dY = 0.0;
-
-                        if (Math.Abs(endingPoint.X - startingPoint.X) < 0.1)
-                        {
-                            dY = matrixNodeDiameter / 2.0;      // dX = 0.0. No need for ATAN
-                        }
-                        else
-                        {
-                            // We need to work out the slope angle.
-                            // Remember: endingPoint.Y < startingPoint.Y at all times, but the Y axis is inverted in WPF Canvas.
-                            // Therefore take starting Y less ending Y, not the other way around.
-                            double theta = Math.Atan2((startingPoint.Y - endingPoint.Y), (endingPoint.X - startingPoint.X));
-                            dX = (matrixNodeDiameter / 2.0) * Math.Cos(theta);  
-                            dY = (matrixNodeDiameter / 2.0) * Math.Sin(theta);  
-                        }
-
-                        Line mxPick = new()
-                        {
-                            StrokeThickness = MxPickUnselectedStrokeThickness,
-                            Stroke = Brushes.Black,
-                            X1 = startingPoint.X + dX,
-                            Y1 = startingPoint.Y - dY,
-                            X2 = endingPoint.X - dX,
-                            Y2 = endingPoint.Y + dY,
-                            Name = mxSelection.Id.ToString() + MxSelectTag,
-                            StrokeEndLineCap = PenLineCap.Round
-                        };
-
-                        MatrixCanvas.Children.Add(mxPick);
+                        // We need to work out the slope angle.
+                        // Remember: endingPoint.Y < startingPoint.Y at all times, but the Y axis is inverted in WPF Canvas.
+                        // Therefore take starting Y less ending Y, not the other way around.
+                        double theta = Math.Atan2((startingPoint.Y - endingPoint.Y), (endingPoint.X - startingPoint.X));
+                        dX = (matrixNodeDiameter / 2.0) * Math.Cos(theta);
+                        dY = (matrixNodeDiameter / 2.0) * Math.Sin(theta);
                     }
+
+                    Line mxPick = new()
+                    {
+                        StrokeThickness = MxPickUnselectedStrokeThickness,
+                        Stroke = Brushes.Black,
+                        X1 = startingPoint.X + dX,
+                        Y1 = startingPoint.Y - dY,
+                        X2 = endingPoint.X - dX,
+                        Y2 = endingPoint.Y + dY,
+                        Name = mxSelection.Id.ToString() + MxSelectTag,
+                        StrokeEndLineCap = PenLineCap.Round
+                    };
+
+                    MatrixCanvas.Children.Add(mxPick);
                 }
             }
 
@@ -1361,10 +1394,10 @@ namespace Mooseware.PatchPal
                         foreach (var output in ((MatrixInputNode)videoNode).Outputs)
                         {
                             if (HasEndToEndConnection(output.Id))
-                            { 
+                            {
                                 result = true;
                                 videoNode = null;   // Time to break from the loop.
-                                break; 
+                                break;
                             }
                         }
                         // If we get this far without a positive result, then one is not forthcoming.

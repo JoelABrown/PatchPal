@@ -1,4 +1,6 @@
-﻿namespace Mooseware.PatchPal
+﻿using System.DirectoryServices;
+
+namespace Mooseware.PatchPal
 {
     /// <summary>
     /// A device which produces, transmits or consumes video as part of the video workflow.
@@ -118,6 +120,25 @@
                     nextParent = nextParent.Input;
                 }
                 return nextParent;
+            }
+        }
+
+        public VideoNode? UpstreamMxOutput
+        {
+            get
+            {
+                VideoNode? result = null;
+                VideoNode? nextParent = this.Input;
+                while (nextParent?.Input != null)
+                {
+                    if (nextParent.Type == NodeType.MxOutput)
+                    {
+                        result = nextParent;
+                        break;
+                    }
+                    nextParent = nextParent.Input;
+                }
+                return result;
             }
         }
     }

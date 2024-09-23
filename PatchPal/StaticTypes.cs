@@ -45,6 +45,10 @@
 
     /// <summary>
     /// The identifier of a specific VideoNode in the video workflow
+    /// NOTE: When adding new nodes to this Enum, also make corresponding
+    ///       changes to both the Node class in StaticClasses.cs and to
+    ///       the appropriate .json files (HardwiredConfiguration.json
+    ///       and PatchConfiguration.json)
     /// </summary>
     internal enum NodeId
     {
@@ -67,6 +71,8 @@
         HdmiCable6,
         HdmiCable7,
         HdmiCable8,
+        HdmiCable9,
+        HdmiCable10,
         MxDest1Patch,
         MxDest2Patch,
         MxDest3Patch,
@@ -94,6 +100,9 @@
         SocHallNorthProjector,
         SocHallSouthPatch,
         SocHallSouthProjector,
+        SplitterInputPatch,
+        SplitterOutput1Patch,
+        SplitterOutput2Patch,
         TeleprompterPatch,
         TeleprompterProjector
     }

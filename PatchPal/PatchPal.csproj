@@ -9,8 +9,8 @@
     <Company>Mooseware</Company>
     <Description>Video Patch and Matrix Configuration Planner</Description>
     <Copyright>Copyright © Mooseware Ltd 2023</Copyright>
-    <Version>1.0.0</Version>
-    <AssemblyVersion>1.0.0.0</AssemblyVersion>
+    <Version>1.1.0</Version>
+    <AssemblyVersion>1.1.0.0</AssemblyVersion>
     <ApplicationIcon>Resources\PatchPal_Icon.ico</ApplicationIcon>
   </PropertyGroup>
 
@@ -31,6 +31,12 @@
   </ItemGroup>
 
   <ItemGroup>
+    <None Update="Dlls\AtemApi.dll">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Dlls\Interop.BMDSwitcherAPI.dll">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
     <None Update="HardwiredConfiguration.json">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
@@ -41,6 +47,16 @@
 
   <ItemGroup>
     <Resource Include="Resources\PatchPal_Icon.ico" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Folder Include="Dlls\" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Reference Include="AtemApi">
+      <HintPath>Dlls\AtemApi.dll</HintPath>
+    </Reference>
   </ItemGroup>
 
 </Project>
