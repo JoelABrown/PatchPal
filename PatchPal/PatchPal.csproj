@@ -2,15 +2,15 @@
 
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
-    <TargetFramework>net6.0-windows</TargetFramework>
+    <TargetFramework>net8.0-windows7.0</TargetFramework>
     <Nullable>enable</Nullable>
     <UseWPF>true</UseWPF>
     <RootNamespace>Mooseware.PatchPal</RootNamespace>
     <Company>Mooseware</Company>
     <Description>Video Patch and Matrix Configuration Planner</Description>
-    <Copyright>Copyright © Mooseware Ltd 2023</Copyright>
-    <Version>1.1.0</Version>
-    <AssemblyVersion>1.1.0.0</AssemblyVersion>
+    <Copyright>Copyright © Mooseware Ltd 2025</Copyright>
+    <Version>1.1.1</Version>
+    <AssemblyVersion>1.1.1.0</AssemblyVersion>
     <ApplicationIcon>Resources\PatchPal_Icon.ico</ApplicationIcon>
   </PropertyGroup>
 
