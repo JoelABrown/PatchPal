@@ -310,9 +310,9 @@ namespace Mooseware.PatchPal
             };
             // Colour scheme depends on type and state of the patch...
             if (patchNode.Id == NodeId.ExternalPseudoPatch
-             || patchNode.Id == NodeId.SplitterInputPatch
-             || patchNode.Id == NodeId.SplitterOutput1Patch
-             || patchNode.Id == NodeId.SplitterOutput2Patch)
+             || patchNode.Id == NodeId.ExtlSplitInputPatch
+             || patchNode.Id == NodeId.ExtlSplitOutput1Patch
+             || patchNode.Id == NodeId.ExtlSplitOutput2Patch)
             {
                 patchBox.Fill = Brushes.Gray;
                 patchBox.Stroke = Brushes.Black;
@@ -359,9 +359,9 @@ namespace Mooseware.PatchPal
                 Name = patchNode.Id.ToString() + NodeLabelTag
             };
             if (patchNode.Id == NodeId.ExternalPseudoPatch
-             || patchNode.Id == NodeId.SplitterInputPatch
-             || patchNode.Id == NodeId.SplitterOutput1Patch
-             || patchNode.Id == NodeId.SplitterOutput2Patch)
+             || patchNode.Id == NodeId.ExtlSplitInputPatch
+             || patchNode.Id == NodeId.ExtlSplitOutput1Patch
+             || patchNode.Id == NodeId.ExtlSplitOutput2Patch)
             {
                 patchText.Foreground = Brushes.White;
             }

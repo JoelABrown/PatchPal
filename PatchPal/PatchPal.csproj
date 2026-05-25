@@ -8,9 +8,9 @@
     <RootNamespace>Mooseware.PatchPal</RootNamespace>
     <Company>Mooseware</Company>
     <Description>Video Patch and Matrix Configuration Planner</Description>
-    <Copyright>Copyright © Mooseware Ltd 2025</Copyright>
-    <Version>1.1.1</Version>
-    <AssemblyVersion>1.1.1.0</AssemblyVersion>
+    <Copyright>Copyright © Mooseware Ltd 2026</Copyright>
+    <Version>1.2.0</Version>
+    <AssemblyVersion>1.2.0.0</AssemblyVersion>
     <ApplicationIcon>Resources\PatchPal_Icon.ico</ApplicationIcon>
   </PropertyGroup>
 

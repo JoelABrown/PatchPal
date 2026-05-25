@@ -11,11 +11,6 @@
       "Input": ""
     },
     {
-      "NodeId": "Bluray",
-      "NodeType": "VideoSource",
-      "Input": ""
-    },
-    {
       "NodeId": "PulpitVga",
       "NodeType": "VideoSource",
       "Input": ""
@@ -24,11 +19,6 @@
       "NodeId": "ExternalDevice",
       "NodeType": "VideoSource",
       "Input": ""
-    },
-    {
-      "NodeId": "BlurayPatch",
-      "NodeType": "PatchSource",
-      "Input": "Bluray"
     },
     {
       "NodeId": "PulpitVgaPatch",
@@ -166,29 +156,34 @@
       "Input": ""
     },
     {
-      "NodeId": "FutureSinkPatch",
+      "NodeId": "HdmiSplitInputPatch",
       "NodeType": "PatchSink",
       "Input": ""
     },
     {
-      "NodeId": "FutureSourcePatch",
+      "NodeId": "HdmiSplitOutput1Patch",
       "NodeType": "PatchSource",
-      "Input": ""
+      "Input": "HdmiSplitInputPatch"
     },
     {
-      "NodeId": "SplitterInputPatch",
+      "NodeId": "HdmiSplitOutput2Patch",
+      "NodeType": "PatchSource",
+      "Input": "HdmiSplitInputPatch"
+    },
+    {
+      "NodeId": "ExtlSplitInputPatch",
       "NodeType": "PatchSink",
       "Input": ""
     },
     {
-      "NodeId": "SplitterOutput1Patch",
+      "NodeId": "ExtlSplitOutput1Patch",
       "NodeType": "PatchSource",
-      "Input": "SplitterInputPatch"
+      "Input": "ExtlSplitInputPatch"
     },
     {
-      "NodeId": "SplitterOutput2Patch",
+      "NodeId": "ExtlSplitOutput2Patch",
       "NodeType": "PatchSource",
-      "Input": "SplitterInputPatch"
+      "Input": "ExtlSplitInputPatch"
     }
   ]
 }
