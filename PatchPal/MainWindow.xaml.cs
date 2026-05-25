@@ -290,7 +290,7 @@ namespace Mooseware.PatchPal
         /// <returns>A Point containing the X,Y coordinates where a line or path should connect to the VideoNode</returns>
         private Point GetPatchNodeCnxPoint(NodeId? nodeId)
         {
-            _logger.LogTrace("GetPatchNodeCnxPoint()");
+            _logger.LogDebug("GetPatchNodeCnxPoint()");
             Point result = new();
 
             try
@@ -428,71 +428,100 @@ namespace Mooseware.PatchPal
 
             try
             {
-            // Get this from configuration files...
-            configuredNodes.Clear();
-            hardwiredNodes.Clear();
+                _logger.LogDebug("LoadNodeConfiguration: Clearing node collections");
+                // Get this from configuration files...
+                configuredNodes.Clear();
+                hardwiredNodes.Clear();
 
-            // NOTE: Loading Hardwired Nodes has to be done in two steps because of logical build sequence.
-            //       1. Load all of the nodes according to their types
-            //       2. Review each node and wire up its input, if it has one. (Each node can have at most 1 input.)
-            HardwiredConfiguration.Load();
-            if (HardwiredConfiguration.Settings != null)
-            {
-                foreach (var item in HardwiredConfiguration.Settings.HardwiredItems)
+                // NOTE: Loading Hardwired Nodes has to be done in two steps because of logical build sequence.
+                //       1. Load all of the nodes according to their types
+                //       2. Review each node and wire up its input, if it has one. (Each node can have at most 1 input.)
+                _logger.LogDebug("LoadNodeConfiguration: Load hardwired nodes...");
+                HardwiredConfiguration.Load();
+                if (HardwiredConfiguration.Settings != null)
                 {
-                    if (Enum.TryParse<NodeType>(item.NodeType, out var nodeType))
+                    _logger.LogDebug("LoadNodeConfiguration: HardwiredConfiguration.Settings.HardwiredItems.Count={count}", HardwiredConfiguration.Settings.HardwiredItems.Count);
+                    foreach (var item in HardwiredConfiguration.Settings.HardwiredItems)
                     {
+                        _logger.LogDebug("LoadNodeConfiguration: Loading NodeId:{id} Type:{type}", item.NodeId, item.NodeType);
+                        if (Enum.TryParse<NodeType>(item.NodeType, out var nodeType))
+                        {
+                            if (Enum.TryParse<NodeId>(item.NodeId, out var thisNodeId))
+                            {
+                                if (nodeType == NodeType.MxInput)
+                                {
+                                    MatrixInputNode mxNode = new(thisNodeId);
+                                    hardwiredNodes.Add(mxNode.Id, mxNode);
+                                }
+                                else
+                                {
+                                    VideoNode videoNode = new(thisNodeId);
+                                    hardwiredNodes.Add(videoNode.Id, videoNode);
+                                }
+                            }
+                        }
+                    }
+                    _logger.LogDebug("LoadNodeConfiguration: wiring up hardwired inputs...");
+                    // Now wire up the inputs, when they have them...
+                    foreach (var item in HardwiredConfiguration.Settings.HardwiredItems)
+                    {
+                        _logger.LogDebug("LoadNodeConfiguration: Wiring Up NodeId:{id} Type:{type} Input:{input}", item.NodeId, item.NodeType, item.Input);
                         if (Enum.TryParse<NodeId>(item.NodeId, out var thisNodeId))
                         {
-                            if (nodeType == NodeType.MxInput)
+                            if (Enum.TryParse<NodeId>(item.Input, out var inputNodeId))
                             {
-                                MatrixInputNode mxNode = new(thisNodeId);
-                                hardwiredNodes.Add(mxNode.Id, mxNode);
+                                hardwiredNodes[thisNodeId].SetInput(hardwiredNodes[inputNodeId]);
                             }
                             else
                             {
-                                VideoNode videoNode = new(thisNodeId);
-                                hardwiredNodes.Add(videoNode.Id, videoNode);
+                                _logger.LogWarning("LoadNodeConfiguration: Unable to identify a source node with ID={id}", item.Input);
                             }
                         }
-                    }
-                }
-                // Now wire up the inputs, when they have them...
-                foreach (var item in HardwiredConfiguration.Settings.HardwiredItems)
-                {
-                    if (Enum.TryParse<NodeId>(item.NodeId, out var thisNodeId))
-                    {
-                        if (Enum.TryParse<NodeId>(item.Input, out var inputNodeId))
+                        else
                         {
-                            hardwiredNodes[thisNodeId].SetInput(hardwiredNodes[inputNodeId]);
+                            _logger.LogWarning("LoadNodeConfiguration: Unable to identify a sink node with ID={id}", item.NodeId);
                         }
                     }
                 }
-            }
-
-            // Now load the configurable items...
-            PatchConfiguration.Load();
-            if (PatchConfiguration.Settings != null)
-            {
-                foreach (var item in PatchConfiguration.Settings.PatchItems)
+                else
                 {
-                    if (!Enum.TryParse<NodeId>(item.Input, out var inputNodeId))
+                    _logger.LogWarning("LoadNodeConfiguration: HardwiredConfiguration.Settings == null");
+                }
+
+                // Now load the configurable items...
+                _logger.LogDebug("LoadNodeConfiguration: Load configurable nodes...");
+                PatchConfiguration.Load();
+                if (PatchConfiguration.Settings != null)
+                {
+                    _logger.LogDebug("LoadNodeConfiguration: PatchConfiguration.Settings.PatchItems.Count={count}", PatchConfiguration.Settings.PatchItems.Count);
+
+                    foreach (var item in PatchConfiguration.Settings.PatchItems)
                     {
-                        inputNodeId = NodeId.Undefined;
-                    }
-                    if (!Enum.TryParse<NodeId>(item.Output, out var outputNodeId))
-                    {
-                        outputNodeId = NodeId.Undefined;
-                    }
-                    if (Enum.TryParse<NodeId>(item.NodeId, out var thisNodeId))
-                    {
-                        VideoNode videoNode = new(thisNodeId);
-                        videoNode.SetInput(hardwiredNodes[inputNodeId]);
-                        videoNode.SetOutput(hardwiredNodes[outputNodeId]);
-                        configuredNodes.Add(videoNode.Id, videoNode);
+                        _logger.LogDebug("LoadNodeConfiguration: Wiring Up NodeId:{id} Type:{type} Input:{input} Output:{output}", item.NodeId, item.NodeType, item.Input, item.Output);
+                        if (!Enum.TryParse<NodeId>(item.Input, out var inputNodeId))
+                        {
+                            inputNodeId = NodeId.Undefined;
+                            _logger.LogWarning("LoadNodeConfiguration: NodeId:{id} Input:{input} UNDEFINED", item.NodeId, item.Input);
+                        }
+                        if (!Enum.TryParse<NodeId>(item.Output, out var outputNodeId))
+                        {
+                            outputNodeId = NodeId.Undefined;
+                            _logger.LogWarning("LoadNodeConfiguration: NodeId:{id} Output:{output} UNDEFINED", item.NodeId, item.Output);
+                        }
+                        if (Enum.TryParse<NodeId>(item.NodeId, out var thisNodeId))
+                        {
+                            VideoNode videoNode = new(thisNodeId);
+                            videoNode.SetInput(hardwiredNodes[inputNodeId]);
+                            videoNode.SetOutput(hardwiredNodes[outputNodeId]);
+                            configuredNodes.Add(videoNode.Id, videoNode);
+                            _logger.LogDebug("LoadNodeConfiguration: NodeId:{id} configured", item.NodeId);
+                        }
                     }
                 }
-            }
+                else
+                {
+                    _logger.LogWarning("LoadNodeConfiguration: PatchConfiguration.Settings == null");
+                }
 
                 #region Hard-coded configuration statements (for development purposes only)
                 //VideoNode node = new(NodeId.AtemAuxOut);
@@ -717,7 +746,7 @@ namespace Mooseware.PatchPal
 
         private void TabList_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
-            _logger.LogTrace("TabList_SelectionChanged()");
+            _logger.LogDebug("TabList_SelectionChanged()");
             try
             {
 
@@ -746,7 +775,7 @@ namespace Mooseware.PatchPal
 
         private void PatchTabItem_SizeChanged(object sender, SizeChangedEventArgs e)
         {
-            _logger.LogTrace("PatchTabItem_SizeChanged()");
+            _logger.LogDebug("PatchTabItem_SizeChanged()");
             try
             {
                 // TODO: Figure out if this is the right place to draw the patch tab contents.
@@ -764,7 +793,7 @@ namespace Mooseware.PatchPal
 
         private void PatchCanvas_MouseDown(object sender, MouseButtonEventArgs e)
         {
-            _logger.LogTrace("MainWindow:PatchCanvas_MouseDown()");
+            _logger.LogDebug("MainWindow:PatchCanvas_MouseDown()");
             try
             {
                 // Figure out what on the Patch Canvas was clicked and then set the selection accordingly.
@@ -812,7 +841,7 @@ namespace Mooseware.PatchPal
         /// <param name="selectedNodeId">Identifier of the item which has just been clicked.</param>
         private void ShowPatchSelection(NodeId selectedNodeId)
         {
-            _logger.LogTrace("MainWindow:ShowPatchSelection()");
+            _logger.LogDebug("MainWindow:ShowPatchSelection()");
             try
             {
                 VideoNode? selectedNode = null;
@@ -1136,7 +1165,7 @@ namespace Mooseware.PatchPal
         /// <returns>The VideoNode of type HdmiCable which can be used to make a new patch connection</returns>
         private VideoNode? GetUnusedHdmiPatchNode()
         {
-            _logger.LogTrace("MainWindow:GetUnusedHdmiPatchNode()");
+            _logger.LogDebug("MainWindow:GetUnusedHdmiPatchNode()");
 
             VideoNode? result = null;
             try
@@ -1190,7 +1219,7 @@ namespace Mooseware.PatchPal
         /// </summary>
         private void DrawMatrixCanvas()
         {
-            _logger.LogTrace("MainWindow:DrawMatrixCanvas()");
+            _logger.LogDebug("MainWindow:DrawMatrixCanvas()");
 
             try
             {
@@ -1492,8 +1521,8 @@ namespace Mooseware.PatchPal
         /// <returns>True if there is a connection downstream all the way to a VideoDestination, false otherwise.</returns>
         private bool HasEndToEndConnection(NodeId nodeId)
         {
-            _logger.LogTrace("MainWindow:HasEndToEndConnection()");
-            
+            _logger.LogDebug("MainWindow:HasEndToEndConnection()");
+
             bool result = false;
             VideoNode? videoNode = null;
 
@@ -1899,7 +1928,7 @@ namespace Mooseware.PatchPal
 
         private void MatrixTabItem_SizeChanged(object sender, SizeChangedEventArgs e)
         {
-            _logger.LogTrace("MainWindow:MatrixTabItem_SizeChanged()");
+            _logger.LogDebug("MainWindow:MatrixTabItem_SizeChanged()");
 
             try
             {
@@ -1916,7 +1945,7 @@ namespace Mooseware.PatchPal
 
         private void MatrixCanvas_MouseDown(object sender, MouseButtonEventArgs e)
         {
-            _logger.LogTrace("MainWindow:MatrixCanvas_MouseDown()");
+            _logger.LogDebug("MainWindow:MatrixCanvas_MouseDown()");
 
             try
             {
