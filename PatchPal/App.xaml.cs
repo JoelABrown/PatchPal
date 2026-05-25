@@ -1,17 +1,61 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Configuration;
-using System.Data;
-using System.Linq;
-using System.Threading.Tasks;
+﻿using System.Configuration;
 using System.Windows;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
+using Serilog;
 
-namespace Mooseware.PatchPal
+namespace Mooseware.PatchPal;
+
+/// <summary>
+/// Interaction logic for App.xaml
+/// </summary>
+public partial class App : System.Windows.Application
 {
-    /// <summary>
-    /// Interaction logic for App.xaml
-    /// </summary>
-    public partial class App : Application
+    public static IHost AppHost { get; private set; }
+
+    public App()
     {
+        // Establish both a main window singleton and a concurrent queue singleton to be used for the HTTP API
+        AppHost = (IHost)Host.CreateDefaultBuilder()
+        .ConfigureServices((hostContext, services) =>
+        {
+            //services.Configure<Configuration.AppSettings>(hostContext.Configuration.GetSection("ApplicationSettings"));
+            services.AddSingleton<MainWindow>();
+            
+            services.AddSerilog(
+                new LoggerConfiguration()
+                .ReadFrom.Configuration(hostContext.Configuration)
+                .CreateLogger()
+                );
+        })
+        .Build();
+
+    }
+
+    protected override async void OnStartup(StartupEventArgs e)
+    {
+        await AppHost!.StartAsync();
+
+        // Log that the app is starting
+        var logger = AppHost.Services.GetRequiredService<ILogger>();
+        logger.Information("App.xaml.cs OnStartup(): Application loading");
+
+        // Launch the MainWindow
+        var startupForm = AppHost.Services.GetRequiredService<MainWindow>();
+        startupForm.Show();
+
+        base.OnStartup(e);
+
+    }
+
+    protected override async void OnExit(ExitEventArgs e)
+    {
+        // Log that the app is starting
+        var logger = AppHost.Services.GetRequiredService<ILogger>();
+        logger.Information("App.xaml.cs OnExit(): Application shutting down");
+
+        // Wind down the API server...
+        await AppHost!.StopAsync();
+        base.OnExit(e);
     }
 }

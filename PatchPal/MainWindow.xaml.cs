@@ -12,6 +12,7 @@ using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Navigation;
 using System.Windows.Shapes;
+using Microsoft.Extensions.Logging;
 using Mooseware.ClipRunner.AtemApi;
 
 namespace Mooseware.PatchPal
@@ -121,24 +122,43 @@ namespace Mooseware.PatchPal
         ///// </summary>
         //private Switcher? _atemSwitcher;
 
-        public MainWindow()
+        /// <summary>
+        /// Logging instance established at the application start
+        /// </summary>
+        private readonly ILogger<MainWindow> _logger;
+
+        public MainWindow(ILogger<MainWindow> logger)
         {
             InitializeComponent();
+
+            // Get a DI reference to the (Serilog) Logger
+            _logger = logger;
+            _logger.LogInformation("MainWindow initializing");
         }
 
         private void Window_Loaded(object sender, RoutedEventArgs e)
         {
-            LoadNodeConfiguration();
-            DrawMatrixCanvas();
-            SetPatchCmdButtonStatus();
+            _logger.LogInformation("MainWindow:Window_Loaded()");
 
-            // TODO: Figure out how to get the current Aux Out selection info, if it's available.
-            //_atemSwitcher = new Switcher(atemIpAddress: "192.168.0.240");
-            //if (_atemSwitcher.IsReady)
-            //{
-            //    var inputs = _atemSwitcher.ListSwitcherInputs;
-            //    int gar = 0;
-            //}
+            try
+            {
+                LoadNodeConfiguration();
+                DrawMatrixCanvas();
+                SetPatchCmdButtonStatus();
+
+                // TODO: Figure out how to get the current Aux Out selection info, if it's available.
+                //_atemSwitcher = new Switcher(atemIpAddress: "192.168.0.240");
+                //if (_atemSwitcher.IsReady)
+                //{
+                //    var inputs = _atemSwitcher.ListSwitcherInputs;
+                //    int gar = 0;
+                //}
+
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error trapped in MainWindow:Window_Loaded()");
+            }
         }
 
         /// <summary>
@@ -146,111 +166,121 @@ namespace Mooseware.PatchPal
         /// </summary>
         private void DrawPatchCanvas()
         {
-            PatchCanvas.Children.Clear();
+            _logger.LogInformation("DrawPatchCanvas()");
 
-            List<VideoNode> sourceNodes = hardwiredNodes.Values
-                .Where(s => s.Type == NodeType.PatchSource)
-                .OrderBy(s => s.DisplayOrder)
-                .ToList();
-
-            List<VideoNode> sinkNodes = hardwiredNodes.Values
-                .Where(s => s.Type == NodeType.PatchSink)
-                .OrderBy(s => s.DisplayOrder)
-                .ToList();
-
-            // How big are the patch node squares?
-            // Make enough room for double the number of nodes which are in the source patch list
-            // But also allow for margins of 10% on either side and in between
-            double patchNodeSize = PatchCanvas.ActualWidth / (((sourceNodes.Count + sinkNodes.Count) * 1.1) + 0.1);
-            double patchMargin = patchNodeSize * 0.1;
-            double patchRowTop = patchMargin * 3;           // For now use as a simplifying assumption.
-            double patchLabelFontSize = patchMargin * 2;    // For now use as a simplifying assumption.
-            double cableOffset = patchMargin * 5;           // For now use as a simplifying assumption.
-            double patchRadius = patchMargin * 2;           // For now use as a simplyfying assumption.
-            double labelHeaderFontSize = patchNodeSize / 2; // For now, etc.
-            double labelFooterFontSize = labelHeaderFontSize * 0.66;    // Arbitrary
-
-            // TODO: Figure out how to avoid bailing due to zero width on the patch tab.
-            if (patchLabelFontSize == 0)
+            try
             {
-                return;
-            }
+                PatchCanvas.Children.Clear();
 
-            // Display the patch connections (sources then sinks)...
-            int column = 0;
-            foreach (var patchNode in sourceNodes)
-            {
-                column++;
-                Grid patchContainer = BuildPatchNode(patchNode, patchNodeSize, patchLabelFontSize);
-                Canvas.SetTop(patchContainer, patchRowTop);
-                Canvas.SetLeft(patchContainer, ((column - 1) * (patchNodeSize + patchMargin)) + patchMargin);
-                PatchCanvas.Children.Add(patchContainer);
-            }
-            foreach (var patchNode in sinkNodes)
-            {
-                column++;
-                Grid patchContainer = BuildPatchNode(patchNode, patchNodeSize, patchLabelFontSize);
-                Canvas.SetTop(patchContainer, patchRowTop);
-                Canvas.SetLeft(patchContainer, ((column - 1) * (patchNodeSize + patchMargin)) + patchMargin);
-                PatchCanvas.Children.Add(patchContainer);
-            }
+                List<VideoNode> sourceNodes = hardwiredNodes.Values
+                    .Where(s => s.Type == NodeType.PatchSource)
+                    .OrderBy(s => s.DisplayOrder)
+                    .ToList();
 
-            // Display the patch HDMI cables...
-            // Only show the cables that are connected.
-            // Sort them in the order of their source connectors.
-            List<VideoNode> hdmiNodes = configuredNodes.Values
-                .Where(s => s.Type == NodeType.HdmiCable && s.Input != null && s.Output != null)
-                .OrderBy(s => s.Input?.DisplayOrder)
-                .ToList();
+                List<VideoNode> sinkNodes = hardwiredNodes.Values
+                    .Where(s => s.Type == NodeType.PatchSink)
+                    .OrderBy(s => s.DisplayOrder)
+                    .ToList();
 
-            int cable = hdmiNodes.Count;
+                // How big are the patch node squares?
+                // Make enough room for double the number of nodes which are in the source patch list
+                // But also allow for margins of 10% on either side and in between
+                double patchNodeSize = PatchCanvas.ActualWidth / (((sourceNodes.Count + sinkNodes.Count) * 1.1) + 0.1);
+                double patchMargin = patchNodeSize * 0.1;
+                double patchRowTop = patchMargin * 3;           // For now use as a simplifying assumption.
+                double patchLabelFontSize = patchMargin * 2;    // For now use as a simplifying assumption.
+                double cableOffset = patchMargin * 5;           // For now use as a simplifying assumption.
+                double patchRadius = patchMargin * 2;           // For now use as a simplyfying assumption.
+                double labelHeaderFontSize = patchNodeSize / 2; // For now, etc.
+                double labelFooterFontSize = labelHeaderFontSize * 0.66;    // Arbitrary
 
-            foreach (var hdmi in hdmiNodes)
-            {
-                Path hdmiPath = new()
+                // TODO: Figure out how to avoid bailing due to zero width on the patch tab.
+                if (patchLabelFontSize == 0)
                 {
-                    Stroke = Brushes.Black,
-                    StrokeThickness = HdmiUnselectedStrokeThickness,
-                    Fill = null,  // Brushes.Transparent;
-                    Name = hdmi.Id.ToString() + HdmiPatchTag
-                };
+                    return;
+                }
 
-                // Where are we going from and to?
-                Point startingPoint = GetPatchNodeCnxPoint(hdmi.Input?.Id);
-                Point endingPoint = GetPatchNodeCnxPoint(hdmi.Output?.Id);
-
-                PathFigure figure = new()
+                // Display the patch connections (sources then sinks)...
+                int column = 0;
+                foreach (var patchNode in sourceNodes)
                 {
-                    StartPoint = new Point(0.0, 0.0),
-                    IsClosed = false,
-                    IsFilled = false
-                };
-                figure.Segments.Clear();
-                figure.Segments.Add(new LineSegment(new Point(0.0, (cable * cableOffset) - patchRadius), true));
-                figure.Segments.Add(new ArcSegment(new Point(patchRadius, (cable * cableOffset)),
-                    new Size(patchRadius, patchRadius), 90.0, false, SweepDirection.Counterclockwise, true));
-                figure.Segments.Add(new LineSegment(new Point(endingPoint.X - startingPoint.X - patchRadius, (cable * cableOffset)), true));
-                figure.Segments.Add(new ArcSegment(new Point(endingPoint.X - startingPoint.X, (cable * cableOffset) - patchRadius),
-                    new Size(patchRadius, patchRadius), 90.0, false, SweepDirection.Counterclockwise, true));
-                figure.Segments.Add(new LineSegment(new Point(endingPoint.X - startingPoint.X, 0.0), true));
-                PathFigureCollection figures = new()
+                    column++;
+                    Grid patchContainer = BuildPatchNode(patchNode, patchNodeSize, patchLabelFontSize);
+                    Canvas.SetTop(patchContainer, patchRowTop);
+                    Canvas.SetLeft(patchContainer, ((column - 1) * (patchNodeSize + patchMargin)) + patchMargin);
+                    PatchCanvas.Children.Add(patchContainer);
+                }
+                foreach (var patchNode in sinkNodes)
+                {
+                    column++;
+                    Grid patchContainer = BuildPatchNode(patchNode, patchNodeSize, patchLabelFontSize);
+                    Canvas.SetTop(patchContainer, patchRowTop);
+                    Canvas.SetLeft(patchContainer, ((column - 1) * (patchNodeSize + patchMargin)) + patchMargin);
+                    PatchCanvas.Children.Add(patchContainer);
+                }
+
+                // Display the patch HDMI cables...
+                // Only show the cables that are connected.
+                // Sort them in the order of their source connectors.
+                List<VideoNode> hdmiNodes = configuredNodes.Values
+                    .Where(s => s.Type == NodeType.HdmiCable && s.Input != null && s.Output != null)
+                    .OrderBy(s => s.Input?.DisplayOrder)
+                    .ToList();
+
+                int cable = hdmiNodes.Count;
+
+                foreach (var hdmi in hdmiNodes)
+                {
+                    Path hdmiPath = new()
+                    {
+                        Stroke = Brushes.Black,
+                        StrokeThickness = HdmiUnselectedStrokeThickness,
+                        Fill = null,  // Brushes.Transparent;
+                        Name = hdmi.Id.ToString() + HdmiPatchTag
+                    };
+
+                    // Where are we going from and to?
+                    Point startingPoint = GetPatchNodeCnxPoint(hdmi.Input?.Id);
+                    Point endingPoint = GetPatchNodeCnxPoint(hdmi.Output?.Id);
+
+                    PathFigure figure = new()
+                    {
+                        StartPoint = new Point(0.0, 0.0),
+                        IsClosed = false,
+                        IsFilled = false
+                    };
+                    figure.Segments.Clear();
+                    figure.Segments.Add(new LineSegment(new Point(0.0, (cable * cableOffset) - patchRadius), true));
+                    figure.Segments.Add(new ArcSegment(new Point(patchRadius, (cable * cableOffset)),
+                        new Size(patchRadius, patchRadius), 90.0, false, SweepDirection.Counterclockwise, true));
+                    figure.Segments.Add(new LineSegment(new Point(endingPoint.X - startingPoint.X - patchRadius, (cable * cableOffset)), true));
+                    figure.Segments.Add(new ArcSegment(new Point(endingPoint.X - startingPoint.X, (cable * cableOffset) - patchRadius),
+                        new Size(patchRadius, patchRadius), 90.0, false, SweepDirection.Counterclockwise, true));
+                    figure.Segments.Add(new LineSegment(new Point(endingPoint.X - startingPoint.X, 0.0), true));
+                    PathFigureCollection figures = new()
                 {
                     figure
                 };
-                PathGeometry geo = new()
-                {
-                    Figures = figures
-                };
-                hdmiPath.Data = geo;
+                    PathGeometry geo = new()
+                    {
+                        Figures = figures
+                    };
+                    hdmiPath.Data = geo;
 
-                Canvas.SetTop(hdmiPath, startingPoint.Y);
-                Canvas.SetLeft(hdmiPath, startingPoint.X);
-                PatchCanvas.Children.Add(hdmiPath);
+                    Canvas.SetTop(hdmiPath, startingPoint.Y);
+                    Canvas.SetLeft(hdmiPath, startingPoint.X);
+                    PatchCanvas.Children.Add(hdmiPath);
 
-                cable--;
+                    cable--;
+                }
+
+                SetPatchCmdButtonStatus();
+
             }
-
-            SetPatchCmdButtonStatus();
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error trapped in MainWindow:DrawPatchCanvas()");
+            }
         }
 
         /// <summary>
@@ -260,27 +290,36 @@ namespace Mooseware.PatchPal
         /// <returns>A Point containing the X,Y coordinates where a line or path should connect to the VideoNode</returns>
         private Point GetPatchNodeCnxPoint(NodeId? nodeId)
         {
+            _logger.LogTrace("GetPatchNodeCnxPoint()");
             Point result = new();
 
-            // Find the patch container and get the point which is the center of it's bottom line...
-            foreach (var item in PatchCanvas.Children)
+            try
             {
-                if (item.GetType() == typeof(Grid))
-                {
-                    Grid hit = (Grid)item;
-                    if (hit.Name == nodeId.ToString() + "Container")
-                    {
-                        // This is the one. What is the middle point of the bottom...
-                        double bottom = (double)hit.GetValue(Canvas.TopProperty)
-                            + (double)hit.GetValue(Canvas.HeightProperty);
-                        double halfWayOver = (double)hit.GetValue(Canvas.LeftProperty)
-                            + ((double)hit.GetValue(Canvas.WidthProperty) / 2);
 
-                        result.X = halfWayOver;
-                        result.Y = bottom;
-                        break;
+                // Find the patch container and get the point which is the center of it's bottom line...
+                foreach (var item in PatchCanvas.Children)
+                {
+                    if (item.GetType() == typeof(Grid))
+                    {
+                        Grid hit = (Grid)item;
+                        if (hit.Name == nodeId.ToString() + "Container")
+                        {
+                            // This is the one. What is the middle point of the bottom...
+                            double bottom = (double)hit.GetValue(Canvas.TopProperty)
+                                + (double)hit.GetValue(Canvas.HeightProperty);
+                            double halfWayOver = (double)hit.GetValue(Canvas.LeftProperty)
+                                + ((double)hit.GetValue(Canvas.WidthProperty) / 2);
+
+                            result.X = halfWayOver;
+                            result.Y = bottom;
+                            break;
+                        }
                     }
                 }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error trapped in MainWindow:GetPatchNodeCnxPoint()");
             }
             return result;
         }
@@ -385,6 +424,10 @@ namespace Mooseware.PatchPal
         /// </summary>
         private void LoadNodeConfiguration()
         {
+            _logger.LogInformation("MainWindow:LoadNodeConfiguration()");
+
+            try
+            {
             // Get this from configuration files...
             configuredNodes.Clear();
             hardwiredNodes.Clear();
@@ -451,282 +494,315 @@ namespace Mooseware.PatchPal
                 }
             }
 
-            #region Hard-coded configuration statements (for development purposes only)
-            //VideoNode node = new(NodeId.AtemAuxOut);
-            //hardwiredNodes.Add(node.Id, node);
+                #region Hard-coded configuration statements (for development purposes only)
+                //VideoNode node = new(NodeId.AtemAuxOut);
+                //hardwiredNodes.Add(node.Id, node);
 
-            //node = new(NodeId.Pc3Shinybow);
-            //hardwiredNodes.Add(node.Id, node);
+                //node = new(NodeId.Pc3Shinybow);
+                //hardwiredNodes.Add(node.Id, node);
 
-            //node = new(NodeId.Bluray);
-            //hardwiredNodes.Add(node.Id, node);
+                //node = new(NodeId.Bluray);
+                //hardwiredNodes.Add(node.Id, node);
 
-            //node = new(NodeId.PulpitVga);
-            //hardwiredNodes.Add(node.Id, node);
+                //node = new(NodeId.PulpitVga);
+                //hardwiredNodes.Add(node.Id, node);
 
-            //node = new(NodeId.ExternalDevice);
-            //hardwiredNodes.Add(node.Id, node);
+                //node = new(NodeId.ExternalDevice);
+                //hardwiredNodes.Add(node.Id, node);
 
-            //node = new(NodeId.BlurayPatch);
-            //node.SetInput(hardwiredNodes[NodeId.Bluray]);
-            //hardwiredNodes.Add(node.Id, node);
+                //node = new(NodeId.BlurayPatch);
+                //node.SetInput(hardwiredNodes[NodeId.Bluray]);
+                //hardwiredNodes.Add(node.Id, node);
 
-            //node = new(NodeId.PulpitVgaPatch);
-            //node.SetInput(hardwiredNodes[NodeId.PulpitVga]);
-            //hardwiredNodes.Add(node.Id, node);
+                //node = new(NodeId.PulpitVgaPatch);
+                //node.SetInput(hardwiredNodes[NodeId.PulpitVga]);
+                //hardwiredNodes.Add(node.Id, node);
 
-            //node = new(NodeId.ExternalPseudoPatch);
-            //node.SetInput(hardwiredNodes[NodeId.ExternalDevice]);
-            //hardwiredNodes.Add(node.Id, node);
+                //node = new(NodeId.ExternalPseudoPatch);
+                //node.SetInput(hardwiredNodes[NodeId.ExternalDevice]);
+                //hardwiredNodes.Add(node.Id, node);
 
-            //node = new(NodeId.MxSrc3Patch);
-            //hardwiredNodes.Add(node.Id, node);
+                //node = new(NodeId.MxSrc3Patch);
+                //hardwiredNodes.Add(node.Id, node);
 
-            //node = new(NodeId.MxSrc4Patch);
-            //hardwiredNodes.Add(node.Id, node);
+                //node = new(NodeId.MxSrc4Patch);
+                //hardwiredNodes.Add(node.Id, node);
 
-            //MatrixInputNode mxNode = new(NodeId.MxIn1);
-            //mxNode.SetInput(hardwiredNodes[NodeId.Pc3Shinybow]);
-            //hardwiredNodes.Add(mxNode.Id, mxNode);
+                //MatrixInputNode mxNode = new(NodeId.MxIn1);
+                //mxNode.SetInput(hardwiredNodes[NodeId.Pc3Shinybow]);
+                //hardwiredNodes.Add(mxNode.Id, mxNode);
 
-            //mxNode = new(NodeId.MxIn2);
-            //mxNode.SetInput(hardwiredNodes[NodeId.AtemAuxOut]);
-            //hardwiredNodes.Add(mxNode.Id, mxNode);
+                //mxNode = new(NodeId.MxIn2);
+                //mxNode.SetInput(hardwiredNodes[NodeId.AtemAuxOut]);
+                //hardwiredNodes.Add(mxNode.Id, mxNode);
 
-            //mxNode = new(NodeId.MxIn3);
-            //mxNode.SetInput(hardwiredNodes[NodeId.MxSrc3Patch]);
-            //hardwiredNodes.Add(mxNode.Id, mxNode);
+                //mxNode = new(NodeId.MxIn3);
+                //mxNode.SetInput(hardwiredNodes[NodeId.MxSrc3Patch]);
+                //hardwiredNodes.Add(mxNode.Id, mxNode);
 
-            //mxNode = new(NodeId.MxIn4);
-            //mxNode.SetInput(hardwiredNodes[NodeId.MxSrc4Patch]);
-            //hardwiredNodes.Add(mxNode.Id, mxNode);
+                //mxNode = new(NodeId.MxIn4);
+                //mxNode.SetInput(hardwiredNodes[NodeId.MxSrc4Patch]);
+                //hardwiredNodes.Add(mxNode.Id, mxNode);
 
-            //node = new(NodeId.MxOut1);
-            //hardwiredNodes.Add(node.Id, node);
+                //node = new(NodeId.MxOut1);
+                //hardwiredNodes.Add(node.Id, node);
 
-            //node = new(NodeId.MxOut2);
-            //hardwiredNodes.Add(node.Id, node);
+                //node = new(NodeId.MxOut2);
+                //hardwiredNodes.Add(node.Id, node);
 
-            //node = new(NodeId.MxOut3);
-            //hardwiredNodes.Add(node.Id, node);
+                //node = new(NodeId.MxOut3);
+                //hardwiredNodes.Add(node.Id, node);
 
-            //node = new(NodeId.MxOut4);
-            //hardwiredNodes.Add(node.Id, node);
+                //node = new(NodeId.MxOut4);
+                //hardwiredNodes.Add(node.Id, node);
 
-            //node = new(NodeId.MxDest1Patch);
-            //node.SetInput(hardwiredNodes[NodeId.MxOut1]);
-            //hardwiredNodes.Add(node.Id, node);
+                //node = new(NodeId.MxDest1Patch);
+                //node.SetInput(hardwiredNodes[NodeId.MxOut1]);
+                //hardwiredNodes.Add(node.Id, node);
 
-            //node = new(NodeId.MxDest2Patch);
-            //node.SetInput(hardwiredNodes[NodeId.MxOut2]);
-            //hardwiredNodes.Add(node.Id, node);
+                //node = new(NodeId.MxDest2Patch);
+                //node.SetInput(hardwiredNodes[NodeId.MxOut2]);
+                //hardwiredNodes.Add(node.Id, node);
 
-            //node = new(NodeId.MxDest3Patch);
-            //node.SetInput(hardwiredNodes[NodeId.MxOut3]);
-            //hardwiredNodes.Add(node.Id, node);
+                //node = new(NodeId.MxDest3Patch);
+                //node.SetInput(hardwiredNodes[NodeId.MxOut3]);
+                //hardwiredNodes.Add(node.Id, node);
 
-            //node = new(NodeId.MxDest4Patch);
-            //node.SetInput(hardwiredNodes[NodeId.MxOut4]);
-            //hardwiredNodes.Add(node.Id, node);
+                //node = new(NodeId.MxDest4Patch);
+                //node.SetInput(hardwiredNodes[NodeId.MxOut4]);
+                //hardwiredNodes.Add(node.Id, node);
 
-            //node = new(NodeId.Atem6Patch);
-            //hardwiredNodes.Add(node.Id, node);
+                //node = new(NodeId.Atem6Patch);
+                //hardwiredNodes.Add(node.Id, node);
 
-            //node = new(NodeId.SanctuaryPatch);
-            //hardwiredNodes.Add(node.Id, node);
+                //node = new(NodeId.SanctuaryPatch);
+                //hardwiredNodes.Add(node.Id, node);
 
-            //node = new(NodeId.SocHallNorthPatch);
-            //hardwiredNodes.Add(node.Id, node);
+                //node = new(NodeId.SocHallNorthPatch);
+                //hardwiredNodes.Add(node.Id, node);
 
-            //node = new(NodeId.SocHallSouthPatch);
-            //hardwiredNodes.Add(node.Id, node);
+                //node = new(NodeId.SocHallSouthPatch);
+                //hardwiredNodes.Add(node.Id, node);
 
-            //node = new(NodeId.TeleprompterPatch);
-            //hardwiredNodes.Add(node.Id, node);
+                //node = new(NodeId.TeleprompterPatch);
+                //hardwiredNodes.Add(node.Id, node);
 
-            //node = new(NodeId.Atem6Input);
-            //node.SetInput(hardwiredNodes[NodeId.Atem6Patch]);
-            //hardwiredNodes.Add(node.Id, node);
+                //node = new(NodeId.Atem6Input);
+                //node.SetInput(hardwiredNodes[NodeId.Atem6Patch]);
+                //hardwiredNodes.Add(node.Id, node);
 
-            //node = new(NodeId.SanctuaryProjector);
-            //node.SetInput(hardwiredNodes[NodeId.SanctuaryPatch]);
-            //hardwiredNodes.Add(node.Id, node);
+                //node = new(NodeId.SanctuaryProjector);
+                //node.SetInput(hardwiredNodes[NodeId.SanctuaryPatch]);
+                //hardwiredNodes.Add(node.Id, node);
 
-            //node = new(NodeId.SocHallNorthProjector);
-            //node.SetInput(hardwiredNodes[NodeId.SocHallNorthPatch]);
-            //hardwiredNodes.Add(node.Id, node);
+                //node = new(NodeId.SocHallNorthProjector);
+                //node.SetInput(hardwiredNodes[NodeId.SocHallNorthPatch]);
+                //hardwiredNodes.Add(node.Id, node);
 
-            //node = new(NodeId.SocHallSouthProjector);
-            //node.SetInput(hardwiredNodes[NodeId.SocHallSouthPatch]);
-            //hardwiredNodes.Add(node.Id, node);
+                //node = new(NodeId.SocHallSouthProjector);
+                //node.SetInput(hardwiredNodes[NodeId.SocHallSouthPatch]);
+                //hardwiredNodes.Add(node.Id, node);
 
-            //node = new(NodeId.TeleprompterProjector);
-            //node.SetInput(hardwiredNodes[NodeId.TeleprompterPatch]);
-            //hardwiredNodes.Add(node.Id, node);
+                //node = new(NodeId.TeleprompterProjector);
+                //node.SetInput(hardwiredNodes[NodeId.TeleprompterPatch]);
+                //hardwiredNodes.Add(node.Id, node);
 
-            //// Future use patch panel nodes which are not connected at all...
-            //node = new(NodeId.Cam3Patch);
-            //hardwiredNodes.Add(node.Id, node);
-            //node = new(NodeId.FutureSinkPatch);
-            //hardwiredNodes.Add(node.Id, node);
-            //node = new(NodeId.FutureSourcePatch);
-            //hardwiredNodes.Add(node.Id, node);
+                //// Future use patch panel nodes which are not connected at all...
+                //node = new(NodeId.Cam3Patch);
+                //hardwiredNodes.Add(node.Id, node);
+                //node = new(NodeId.FutureSinkPatch);
+                //hardwiredNodes.Add(node.Id, node);
+                //node = new(NodeId.FutureSourcePatch);
+                //hardwiredNodes.Add(node.Id, node);
 
-            // Use this code to create a new HardwiredConfiguration.json file out of the 
-            // currently loaded hardwiredNodes collection.  This is a design-time activity only.
-            //foreach (var hardwiredNode in hardwiredNodes)
-            //{
-            //    HardwiredItem hardwiredItem = new()
-            //    {
-            //        NodeId = hardwiredNode.Value.Id.ToString(),
-            //        NodeType = hardwiredNode.Value.Type.ToString(),
-            //        Input = hardwiredNode.Value.Input?.Id.ToString() ?? String.Empty
-            //    };
-            //    ////hardwiredConfiguration.HardwiredItems.Add(hardwiredItem);
-            //    HardwiredConfiguration.Settings?.HardwiredItems.Add(hardwiredItem);
-            //}
-            //HardwiredConfiguration.Save();
-
-
-            // Configured nodes...
-            //VideoNode node;
-
-            //node = new(NodeId.HdmiCable1);
-            //node.SetInput(hardwiredNodes[NodeId.PulpitVgaPatch]);
-            //node.SetOutput(hardwiredNodes[NodeId.MxSrc4Patch]);
-            //configuredNodes.Add(node.Id, node);
-
-            //node = new(NodeId.HdmiCable2);
-            //node.SetInput(hardwiredNodes[NodeId.ExternalPseudoPatch]);
-            //node.SetOutput(hardwiredNodes[NodeId.MxSrc3Patch]);
-            //configuredNodes.Add(node.Id, node);
-
-            //node = new(NodeId.HdmiCable3);
-            //node.SetInput(hardwiredNodes[NodeId.BlurayPatch]);
-            //node.SetOutput(hardwiredNodes[NodeId.SocHallSouthPatch]);
-            //configuredNodes.Add(node.Id, node);
-
-            //node = new(NodeId.HdmiCable4);
-            //node.SetInput(hardwiredNodes[NodeId.MxDest1Patch]);
-            //node.SetOutput(hardwiredNodes[NodeId.SanctuaryPatch]);
-            //configuredNodes.Add(node.Id, node);
-
-            //node = new(NodeId.HdmiCable5);
-            //node.SetInput(hardwiredNodes[NodeId.MxDest2Patch]);
-            //node.SetOutput(hardwiredNodes[NodeId.TeleprompterPatch]);
-            //configuredNodes.Add(node.Id, node);
-
-            //node = new(NodeId.HdmiCable6);
-            //node.SetInput(hardwiredNodes[NodeId.MxDest3Patch]);
-            //node.SetOutput(hardwiredNodes[NodeId.SocHallNorthPatch]);
-            //configuredNodes.Add(node.Id, node);
-
-            //node = new(NodeId.HdmiCable7);
-            //node.SetInput(hardwiredNodes[NodeId.MxDest4Patch]);
-            //node.SetOutput(hardwiredNodes[NodeId.Atem6Patch]);
-            //configuredNodes.Add(node.Id, node);
-
-            //// Configurable MX selection nodes...
-            //// -------------------------------
-            //node = new(NodeId.MxPick1);
-            //node.SetInput(hardwiredNodes[NodeId.MxIn1]);
-            //node.SetOutput(hardwiredNodes[NodeId.MxOut1]);
-            //configuredNodes.Add(node.Id, node);
-
-            //node = new(NodeId.MxPick2);
-            //node.SetInput(hardwiredNodes[NodeId.MxIn2]);
-            //node.SetOutput(hardwiredNodes[NodeId.MxOut2]);
-            //configuredNodes.Add(node.Id, node);
-
-            //node = new(NodeId.MxPick3);
-            //node.SetInput(hardwiredNodes[NodeId.MxIn1]);
-            //node.SetOutput(hardwiredNodes[NodeId.MxOut3]);
-            //configuredNodes.Add(node.Id, node);
-
-            //node = new(NodeId.MxPick4);
-            //node.SetInput(hardwiredNodes[NodeId.MxIn1]);
-            //node.SetOutput(hardwiredNodes[NodeId.MxOut4]);
-            //configuredNodes.Add(node.Id, node);
-
-            //PatchConfiguration.Load();
-            //foreach (var patchNode in configuredNodes)
-            //{
-            //    ConfigurableItem patchItem = new()
-            //    {
-            //        NodeId = patchNode.Value.Id.ToString(),
-            //        NodeType = patchNode.Value.Type.ToString(),
-            //        Input = patchNode.Value.Input?.Id.ToString() ?? String.Empty,
-            //        Output = patchNode.Value.Output?.Id.ToString() ?? String.Empty
-            //    };
-            //    PatchConfiguration.Settings?.PatchItems.Add(patchItem);
-            //}
-            //PatchConfiguration.Save();
+                // Use this code to create a new HardwiredConfiguration.json file out of the 
+                // currently loaded hardwiredNodes collection.  This is a design-time activity only.
+                //foreach (var hardwiredNode in hardwiredNodes)
+                //{
+                //    HardwiredItem hardwiredItem = new()
+                //    {
+                //        NodeId = hardwiredNode.Value.Id.ToString(),
+                //        NodeType = hardwiredNode.Value.Type.ToString(),
+                //        Input = hardwiredNode.Value.Input?.Id.ToString() ?? String.Empty
+                //    };
+                //    ////hardwiredConfiguration.HardwiredItems.Add(hardwiredItem);
+                //    HardwiredConfiguration.Settings?.HardwiredItems.Add(hardwiredItem);
+                //}
+                //HardwiredConfiguration.Save();
 
 
-            #endregion
+                // Configured nodes...
+                //VideoNode node;
+
+                //node = new(NodeId.HdmiCable1);
+                //node.SetInput(hardwiredNodes[NodeId.PulpitVgaPatch]);
+                //node.SetOutput(hardwiredNodes[NodeId.MxSrc4Patch]);
+                //configuredNodes.Add(node.Id, node);
+
+                //node = new(NodeId.HdmiCable2);
+                //node.SetInput(hardwiredNodes[NodeId.ExternalPseudoPatch]);
+                //node.SetOutput(hardwiredNodes[NodeId.MxSrc3Patch]);
+                //configuredNodes.Add(node.Id, node);
+
+                //node = new(NodeId.HdmiCable3);
+                //node.SetInput(hardwiredNodes[NodeId.BlurayPatch]);
+                //node.SetOutput(hardwiredNodes[NodeId.SocHallSouthPatch]);
+                //configuredNodes.Add(node.Id, node);
+
+                //node = new(NodeId.HdmiCable4);
+                //node.SetInput(hardwiredNodes[NodeId.MxDest1Patch]);
+                //node.SetOutput(hardwiredNodes[NodeId.SanctuaryPatch]);
+                //configuredNodes.Add(node.Id, node);
+
+                //node = new(NodeId.HdmiCable5);
+                //node.SetInput(hardwiredNodes[NodeId.MxDest2Patch]);
+                //node.SetOutput(hardwiredNodes[NodeId.TeleprompterPatch]);
+                //configuredNodes.Add(node.Id, node);
+
+                //node = new(NodeId.HdmiCable6);
+                //node.SetInput(hardwiredNodes[NodeId.MxDest3Patch]);
+                //node.SetOutput(hardwiredNodes[NodeId.SocHallNorthPatch]);
+                //configuredNodes.Add(node.Id, node);
+
+                //node = new(NodeId.HdmiCable7);
+                //node.SetInput(hardwiredNodes[NodeId.MxDest4Patch]);
+                //node.SetOutput(hardwiredNodes[NodeId.Atem6Patch]);
+                //configuredNodes.Add(node.Id, node);
+
+                //// Configurable MX selection nodes...
+                //// -------------------------------
+                //node = new(NodeId.MxPick1);
+                //node.SetInput(hardwiredNodes[NodeId.MxIn1]);
+                //node.SetOutput(hardwiredNodes[NodeId.MxOut1]);
+                //configuredNodes.Add(node.Id, node);
+
+                //node = new(NodeId.MxPick2);
+                //node.SetInput(hardwiredNodes[NodeId.MxIn2]);
+                //node.SetOutput(hardwiredNodes[NodeId.MxOut2]);
+                //configuredNodes.Add(node.Id, node);
+
+                //node = new(NodeId.MxPick3);
+                //node.SetInput(hardwiredNodes[NodeId.MxIn1]);
+                //node.SetOutput(hardwiredNodes[NodeId.MxOut3]);
+                //configuredNodes.Add(node.Id, node);
+
+                //node = new(NodeId.MxPick4);
+                //node.SetInput(hardwiredNodes[NodeId.MxIn1]);
+                //node.SetOutput(hardwiredNodes[NodeId.MxOut4]);
+                //configuredNodes.Add(node.Id, node);
+
+                //PatchConfiguration.Load();
+                //foreach (var patchNode in configuredNodes)
+                //{
+                //    ConfigurableItem patchItem = new()
+                //    {
+                //        NodeId = patchNode.Value.Id.ToString(),
+                //        NodeType = patchNode.Value.Type.ToString(),
+                //        Input = patchNode.Value.Input?.Id.ToString() ?? String.Empty,
+                //        Output = patchNode.Value.Output?.Id.ToString() ?? String.Empty
+                //    };
+                //    PatchConfiguration.Settings?.PatchItems.Add(patchItem);
+                //}
+                //PatchConfiguration.Save();
+
+
+                #endregion
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error trapped in MainWindow:LoadNodeConfiguration()");
+            }
+
         }
 
         private void TabList_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
-            // Reset any node selections if the tab is changing.
-            _selectedSourcePatch = NodeId.Undefined;
-            _selectedHdmiPatch = NodeId.Undefined;
-            _selectedSinkPatch = NodeId.Undefined;
-
-            _selectedSinkMatrix = NodeId.Undefined;
-
-            if (e.Source == TabList && MatrixTabItem.IsSelected)
+            _logger.LogTrace("TabList_SelectionChanged()");
+            try
             {
-                DrawMatrixCanvas();
+
+                // Reset any node selections if the tab is changing.
+                _selectedSourcePatch = NodeId.Undefined;
+                _selectedHdmiPatch = NodeId.Undefined;
+                _selectedSinkPatch = NodeId.Undefined;
+
+                _selectedSinkMatrix = NodeId.Undefined;
+
+                if (e.Source == TabList && MatrixTabItem.IsSelected)
+                {
+                    DrawMatrixCanvas();
+                }
+                else if (e.Source == TabList && PatchTabItem.IsSelected)
+                {
+                    DrawPatchCanvas();
+                }
             }
-            else if (e.Source == TabList && PatchTabItem.IsSelected)
+            catch (Exception ex)
             {
-                DrawPatchCanvas();
+                _logger.LogError(ex, "Error trapped in MainWindow:TabList_SelectionChanged()");
+
             }
         }
 
         private void PatchTabItem_SizeChanged(object sender, SizeChangedEventArgs e)
         {
-            // TODO: Figure out if this is the right place to draw the patch tab contents.
-            if (PatchTabItem.IsSelected)
+            _logger.LogTrace("PatchTabItem_SizeChanged()");
+            try
             {
-                DrawPatchCanvas();
+                // TODO: Figure out if this is the right place to draw the patch tab contents.
+                if (PatchTabItem.IsSelected)
+                {
+                    DrawPatchCanvas();
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error trapped in MainWindow:PatchTabItem_SizeChanged()");
+
             }
         }
 
         private void PatchCanvas_MouseDown(object sender, MouseButtonEventArgs e)
         {
-            // Figure out what on the Patch Canvas was clicked and then set the selection accordingly.
-            // Where was the click? Was it on a patch node or an HDMI cable node?
-            if (e.Source.GetType() == typeof(Rectangle))
+            _logger.LogTrace("MainWindow:PatchCanvas_MouseDown()");
+            try
             {
-                Rectangle clickedRectangle = (Rectangle)(e.Source);
-                if (Enum.TryParse<NodeId>(clickedRectangle.Name.Replace(NodeOutlineTag, string.Empty), out NodeId clickedNodeId))
+                // Figure out what on the Patch Canvas was clicked and then set the selection accordingly.
+                // Where was the click? Was it on a patch node or an HDMI cable node?
+                if (e.Source.GetType() == typeof(Rectangle))
                 {
-                    if (hardwiredNodes.ContainsKey(clickedNodeId))
+                    Rectangle clickedRectangle = (Rectangle)(e.Source);
+                    if (Enum.TryParse<NodeId>(clickedRectangle.Name.Replace(NodeOutlineTag, string.Empty), out NodeId clickedNodeId))
                     {
-                        ShowPatchSelection(clickedNodeId);
+                        if (hardwiredNodes.ContainsKey(clickedNodeId))
+                        {
+                            ShowPatchSelection(clickedNodeId);
+                        }
                     }
                 }
-            }
-            else if (e.Source.GetType() == typeof(Path))
-            {
-                Path clickedPath = (Path)(e.Source);
-                if (Enum.TryParse<NodeId>(clickedPath.Name.Replace(HdmiPatchTag, string.Empty), out NodeId clickedNodeId))
+                else if (e.Source.GetType() == typeof(Path))
                 {
-                    if (configuredNodes.ContainsKey(clickedNodeId) && configuredNodes[clickedNodeId].Type == NodeType.HdmiCable)
+                    Path clickedPath = (Path)(e.Source);
+                    if (Enum.TryParse<NodeId>(clickedPath.Name.Replace(HdmiPatchTag, string.Empty), out NodeId clickedNodeId))
                     {
-                        ShowPatchSelection(clickedNodeId);
+                        if (configuredNodes.ContainsKey(clickedNodeId) && configuredNodes[clickedNodeId].Type == NodeType.HdmiCable)
+                        {
+                            ShowPatchSelection(clickedNodeId);
+                        }
                     }
                 }
-            }
-            else
-            {
-                // No selection...
-                ShowPatchSelection(NodeId.Undefined);
-            }
+                else
+                {
+                    // No selection...
+                    ShowPatchSelection(NodeId.Undefined);
+                }
 
-            SetPatchCmdButtonStatus();
+                SetPatchCmdButtonStatus();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error trapped in MainWindow:PatchCanvas_MouseDown()");
+            }
         }
 
         /// <summary>
@@ -736,173 +812,181 @@ namespace Mooseware.PatchPal
         /// <param name="selectedNodeId">Identifier of the item which has just been clicked.</param>
         private void ShowPatchSelection(NodeId selectedNodeId)
         {
-            VideoNode? selectedNode = null;
-            // What has been selected now?
-            if (hardwiredNodes.ContainsKey(selectedNodeId))
+            _logger.LogTrace("MainWindow:ShowPatchSelection()");
+            try
             {
-                selectedNode = hardwiredNodes[selectedNodeId];
-            }
-            else if (configuredNodes.ContainsKey(selectedNodeId))
-            {
-                selectedNode = configuredNodes[selectedNodeId];
-            }
-            // Otherwise nothing was selected.
-
-            // If there is a new selection, does it imply a connected chain or just a single node?
-            bool chainSelection = false;
-            if (selectedNode != null)
-            {
-                switch (selectedNode.Type)
+                VideoNode? selectedNode = null;
+                // What has been selected now?
+                if (hardwiredNodes.ContainsKey(selectedNodeId))
                 {
-                    case NodeType.HdmiCable:
-                        chainSelection = selectedNode.Input != null && selectedNode.Output != null;
-                        break;
-                    case NodeType.PatchSink:
-                        chainSelection = selectedNode.Input != null && selectedNode.Input.Input != null;
-                        break;
-                    case NodeType.PatchSource:
-                        chainSelection = selectedNode.Output != null && selectedNode.Output.Output != null;
-                        break;
-                    default:
-                        // Don't care in any other case.
-                        break;
+                    selectedNode = hardwiredNodes[selectedNodeId];
                 }
-            }
-
-            // Now that we know if we're selecting just one node or a chain of nodes,
-            // set the selection visual cues, remembering to reset any prior visual selection first.
-
-            // Resetting current visual selection, if any...
-            if (_selectedHdmiPatch != NodeId.Undefined)
-            {
-                Path? hdmi = FindHdmiPatchPathById(PatchCanvas, _selectedHdmiPatch);
-                if (hdmi != null)
+                else if (configuredNodes.ContainsKey(selectedNodeId))
                 {
-                    hdmi.Stroke = UnselectedPatchBrush;
-                    hdmi.StrokeThickness = HdmiUnselectedStrokeThickness;
+                    selectedNode = configuredNodes[selectedNodeId];
                 }
-            }
-            if (_selectedSourcePatch != NodeId.Undefined)
-            {
-                Rectangle? rectangle = FindGridRectangleByPatchId(PatchCanvas, _selectedSourcePatch);
-                if (rectangle != null)
-                {
-                    rectangle.Stroke = UnselectedPatchBrush;
-                    rectangle.StrokeThickness = PatchUnselectedStrokeThickness;
-                }
-            }
-            if (_selectedSinkPatch != NodeId.Undefined)
-            {
-                Rectangle? rectangle = FindGridRectangleByPatchId(PatchCanvas, _selectedSinkPatch);
-                if (rectangle != null)
-                {
-                    rectangle.Stroke = UnselectedPatchBrush;
-                    rectangle.StrokeThickness = PatchUnselectedStrokeThickness;
-                }
-            }
+                // Otherwise nothing was selected.
 
-            // Was the old selection a chain (from source through hdmi to sink)
-            // This is important because it impacts what to reset as far as visuals...
-            if ((_selectedSourcePatch != NodeId.Undefined
-                && _selectedHdmiPatch != NodeId.Undefined
-                && _selectedSinkPatch != NodeId.Undefined)
-                || (selectedNode != null && selectedNode.Enabled == false))
-            {
-                // All of these should be reset based on whatever is being selected now.
-                _selectedSourcePatch = NodeId.Undefined;
-                _selectedHdmiPatch = NodeId.Undefined;
-                _selectedSinkPatch = NodeId.Undefined;
-            }
-
-            // Now set the cues for the new selection, as appropriate...
-            if (selectedNode != null)
-            {
-                // Never show a disabled patch as selected.
-                if (selectedNode.Enabled == false)
+                // If there is a new selection, does it imply a connected chain or just a single node?
+                bool chainSelection = false;
+                if (selectedNode != null)
                 {
-                    return;
-                }
-
-                // Get all of the affected pieces...
-                NodeId affectedSourcePatch = NodeId.Undefined;
-                NodeId affectedHdmiPatch = NodeId.Undefined;
-                NodeId affectedSinkPatch = NodeId.Undefined;
-
-                if (selectedNode.Type == NodeType.PatchSource)
-                {
-                    affectedSourcePatch = selectedNode.Id;
-                    if (chainSelection)
+                    switch (selectedNode.Type)
                     {
-#pragma warning disable CS8602 // Dereference of a possibly null reference.
-                        affectedHdmiPatch = selectedNode.Output.Id;
-                        affectedSinkPatch = selectedNode.Output.Output.Id;
-#pragma warning restore CS8602 // Dereference of a possibly null reference.
-                    }
-                    else
-                    {
-                        // Preserve the selected Sink Patch if this is not a whole chain.
-                        affectedSinkPatch = _selectedSinkPatch;
-                    }
-                }
-                if (selectedNode.Type == NodeType.HdmiCable)
-                {
-                    affectedHdmiPatch = selectedNode.Id;
-                    if (chainSelection)
-                    {
-#pragma warning disable CS8602 // Dereference of a possibly null reference.
-                        affectedSourcePatch = selectedNode.Input.Id;
-                        affectedSinkPatch = selectedNode.Output.Id;
-#pragma warning restore CS8602 // Dereference of a possibly null reference.
-                    }
-                }
-                if (selectedNode.Type == NodeType.PatchSink)
-                {
-                    affectedSinkPatch = selectedNodeId;
-                    if (chainSelection)
-                    {
-#pragma warning disable CS8602 // Dereference of a possibly null reference.
-                        affectedHdmiPatch = selectedNode.Input.Id;
-                        affectedSourcePatch = selectedNode.Input.Input.Id;
-#pragma warning restore CS8602 // Dereference of a possibly null reference.
-                    }
-                    else
-                    {
-                        // Preserve the selected Source Patch if this is not a whole chain.
-                        affectedSourcePatch = _selectedSourcePatch;
+                        case NodeType.HdmiCable:
+                            chainSelection = selectedNode.Input != null && selectedNode.Output != null;
+                            break;
+                        case NodeType.PatchSink:
+                            chainSelection = selectedNode.Input != null && selectedNode.Input.Input != null;
+                            break;
+                        case NodeType.PatchSource:
+                            chainSelection = selectedNode.Output != null && selectedNode.Output.Output != null;
+                            break;
+                        default:
+                            // Don't care in any other case.
+                            break;
                     }
                 }
 
-                // Set the visual cues for the new selected item(s)
-                if (affectedSourcePatch != NodeId.Undefined)
+                // Now that we know if we're selecting just one node or a chain of nodes,
+                // set the selection visual cues, remembering to reset any prior visual selection first.
+
+                // Resetting current visual selection, if any...
+                if (_selectedHdmiPatch != NodeId.Undefined)
                 {
-                    Rectangle? rectangle = FindGridRectangleByPatchId(PatchCanvas, affectedSourcePatch);
+                    Path? hdmi = FindHdmiPatchPathById(PatchCanvas, _selectedHdmiPatch);
+                    if (hdmi != null)
+                    {
+                        hdmi.Stroke = UnselectedPatchBrush;
+                        hdmi.StrokeThickness = HdmiUnselectedStrokeThickness;
+                    }
+                }
+                if (_selectedSourcePatch != NodeId.Undefined)
+                {
+                    Rectangle? rectangle = FindGridRectangleByPatchId(PatchCanvas, _selectedSourcePatch);
                     if (rectangle != null)
                     {
-                        rectangle.Stroke = SelectedPatchBrush;
-                        rectangle.StrokeThickness = PatchSelectedStrokeThickness;
+                        rectangle.Stroke = UnselectedPatchBrush;
+                        rectangle.StrokeThickness = PatchUnselectedStrokeThickness;
                     }
                 }
-                _selectedSourcePatch = affectedSourcePatch;
-                if (affectedHdmiPatch != NodeId.Undefined)
+                if (_selectedSinkPatch != NodeId.Undefined)
                 {
-                    Path? Path = FindHdmiPatchPathById(PatchCanvas, affectedHdmiPatch);
-                    if (Path != null)
-                    {
-                        Path.Stroke = SelectedPatchBrush;
-                        Path.StrokeThickness = HdmiSelectedStrokeThickness;
-                    }
-                }
-                _selectedHdmiPatch = affectedHdmiPatch;
-                if (affectedSinkPatch != NodeId.Undefined)
-                {
-                    Rectangle? rectangle = FindGridRectangleByPatchId(PatchCanvas, affectedSinkPatch);
+                    Rectangle? rectangle = FindGridRectangleByPatchId(PatchCanvas, _selectedSinkPatch);
                     if (rectangle != null)
                     {
-                        rectangle.Stroke = SelectedPatchBrush;
-                        rectangle.StrokeThickness = PatchSelectedStrokeThickness;
+                        rectangle.Stroke = UnselectedPatchBrush;
+                        rectangle.StrokeThickness = PatchUnselectedStrokeThickness;
                     }
                 }
-                _selectedSinkPatch = affectedSinkPatch;
+
+                // Was the old selection a chain (from source through hdmi to sink)
+                // This is important because it impacts what to reset as far as visuals...
+                if ((_selectedSourcePatch != NodeId.Undefined
+                    && _selectedHdmiPatch != NodeId.Undefined
+                    && _selectedSinkPatch != NodeId.Undefined)
+                    || (selectedNode != null && selectedNode.Enabled == false))
+                {
+                    // All of these should be reset based on whatever is being selected now.
+                    _selectedSourcePatch = NodeId.Undefined;
+                    _selectedHdmiPatch = NodeId.Undefined;
+                    _selectedSinkPatch = NodeId.Undefined;
+                }
+
+                // Now set the cues for the new selection, as appropriate...
+                if (selectedNode != null)
+                {
+                    // Never show a disabled patch as selected.
+                    if (selectedNode.Enabled == false)
+                    {
+                        return;
+                    }
+
+                    // Get all of the affected pieces...
+                    NodeId affectedSourcePatch = NodeId.Undefined;
+                    NodeId affectedHdmiPatch = NodeId.Undefined;
+                    NodeId affectedSinkPatch = NodeId.Undefined;
+
+                    if (selectedNode.Type == NodeType.PatchSource)
+                    {
+                        affectedSourcePatch = selectedNode.Id;
+                        if (chainSelection)
+                        {
+#pragma warning disable CS8602 // Dereference of a possibly null reference.
+                            affectedHdmiPatch = selectedNode.Output.Id;
+                            affectedSinkPatch = selectedNode.Output.Output.Id;
+#pragma warning restore CS8602 // Dereference of a possibly null reference.
+                        }
+                        else
+                        {
+                            // Preserve the selected Sink Patch if this is not a whole chain.
+                            affectedSinkPatch = _selectedSinkPatch;
+                        }
+                    }
+                    if (selectedNode.Type == NodeType.HdmiCable)
+                    {
+                        affectedHdmiPatch = selectedNode.Id;
+                        if (chainSelection)
+                        {
+#pragma warning disable CS8602 // Dereference of a possibly null reference.
+                            affectedSourcePatch = selectedNode.Input.Id;
+                            affectedSinkPatch = selectedNode.Output.Id;
+#pragma warning restore CS8602 // Dereference of a possibly null reference.
+                        }
+                    }
+                    if (selectedNode.Type == NodeType.PatchSink)
+                    {
+                        affectedSinkPatch = selectedNodeId;
+                        if (chainSelection)
+                        {
+#pragma warning disable CS8602 // Dereference of a possibly null reference.
+                            affectedHdmiPatch = selectedNode.Input.Id;
+                            affectedSourcePatch = selectedNode.Input.Input.Id;
+#pragma warning restore CS8602 // Dereference of a possibly null reference.
+                        }
+                        else
+                        {
+                            // Preserve the selected Source Patch if this is not a whole chain.
+                            affectedSourcePatch = _selectedSourcePatch;
+                        }
+                    }
+
+                    // Set the visual cues for the new selected item(s)
+                    if (affectedSourcePatch != NodeId.Undefined)
+                    {
+                        Rectangle? rectangle = FindGridRectangleByPatchId(PatchCanvas, affectedSourcePatch);
+                        if (rectangle != null)
+                        {
+                            rectangle.Stroke = SelectedPatchBrush;
+                            rectangle.StrokeThickness = PatchSelectedStrokeThickness;
+                        }
+                    }
+                    _selectedSourcePatch = affectedSourcePatch;
+                    if (affectedHdmiPatch != NodeId.Undefined)
+                    {
+                        Path? Path = FindHdmiPatchPathById(PatchCanvas, affectedHdmiPatch);
+                        if (Path != null)
+                        {
+                            Path.Stroke = SelectedPatchBrush;
+                            Path.StrokeThickness = HdmiSelectedStrokeThickness;
+                        }
+                    }
+                    _selectedHdmiPatch = affectedHdmiPatch;
+                    if (affectedSinkPatch != NodeId.Undefined)
+                    {
+                        Rectangle? rectangle = FindGridRectangleByPatchId(PatchCanvas, affectedSinkPatch);
+                        if (rectangle != null)
+                        {
+                            rectangle.Stroke = SelectedPatchBrush;
+                            rectangle.StrokeThickness = PatchSelectedStrokeThickness;
+                        }
+                    }
+                    _selectedSinkPatch = affectedSinkPatch;
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error trapped in MainWindow:ShowPatchSelection()");
             }
         }
 
@@ -928,7 +1012,6 @@ namespace Mooseware.PatchPal
                     }
                 }
             }
-
             return result;
         }
 
@@ -984,48 +1067,66 @@ namespace Mooseware.PatchPal
 
         private void PatchConnectButton_Click(object sender, RoutedEventArgs e)
         {
-            // Totally unecessary sanity check...
-            if (_selectedSinkPatch != NodeId.Undefined
-             && _selectedSourcePatch != NodeId.Undefined
-             && _selectedHdmiPatch == NodeId.Undefined)
+            _logger.LogInformation("MainWindow:PatchConnectButton_Click()");
+
+            try
             {
-                // Find an unused HDMI patch node
-                var hdmi = GetUnusedHdmiPatchNode()
-;
-                if (hdmi != null)
+                // Totally unecessary sanity check...
+                if (_selectedSinkPatch != NodeId.Undefined
+                 && _selectedSourcePatch != NodeId.Undefined
+                 && _selectedHdmiPatch == NodeId.Undefined)
                 {
-                    hardwiredNodes[_selectedSourcePatch].SetOutput(hdmi);
-                    hardwiredNodes[_selectedSinkPatch].SetInput(hdmi);
-                    _selectedHdmiPatch = hdmi.Id;
+                    // Find an unused HDMI patch node
+                    var hdmi = GetUnusedHdmiPatchNode()
+    ;
+                    if (hdmi != null)
+                    {
+                        hardwiredNodes[_selectedSourcePatch].SetOutput(hdmi);
+                        hardwiredNodes[_selectedSinkPatch].SetInput(hdmi);
+                        _selectedHdmiPatch = hdmi.Id;
 
-                    configuredNodes.Add(hdmi.Id, hdmi);
+                        configuredNodes.Add(hdmi.Id, hdmi);
 
-                    DrawPatchCanvas();
-                    ShowPatchSelection(_selectedSourcePatch);
+                        DrawPatchCanvas();
+                        ShowPatchSelection(_selectedSourcePatch);
+                    }
+
+                    SaveCurrentPatchConfiguration();
                 }
-
-                SaveCurrentPatchConfiguration();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error trapped in MainWindow:PatchConnectButton_Click()");
             }
         }
 
         private void PatchDisconnectButton_Click(object sender, RoutedEventArgs e)
         {
-            // Totally unecessary sanity check...
-            if (_selectedSinkPatch != NodeId.Undefined
-             && _selectedSourcePatch != NodeId.Undefined
-             && _selectedHdmiPatch != NodeId.Undefined)
+            _logger.LogInformation("MainWindow:PatchDisconnectButton_Click()");
+
+            try
             {
-                var hdmi = configuredNodes[_selectedHdmiPatch];
+                // Totally unecessary sanity check...
+                if (_selectedSinkPatch != NodeId.Undefined
+                 && _selectedSourcePatch != NodeId.Undefined
+                 && _selectedHdmiPatch != NodeId.Undefined)
+                {
+                    var hdmi = configuredNodes[_selectedHdmiPatch];
 
-                hdmi.DisconnectInput();
-                hdmi.DisconnectOutput();
-                configuredNodes.Remove(hdmi.Id);
-                _selectedHdmiPatch = NodeId.Undefined;
+                    hdmi.DisconnectInput();
+                    hdmi.DisconnectOutput();
+                    configuredNodes.Remove(hdmi.Id);
+                    _selectedHdmiPatch = NodeId.Undefined;
 
-                DrawPatchCanvas();
-                ShowPatchSelection(_selectedSourcePatch);
+                    DrawPatchCanvas();
+                    ShowPatchSelection(_selectedSourcePatch);
 
-                SaveCurrentPatchConfiguration();
+                    SaveCurrentPatchConfiguration();
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error trapped in MainWindow:PatchDisconnectButton_Click()");
             }
         }
 
@@ -1035,14 +1136,22 @@ namespace Mooseware.PatchPal
         /// <returns>The VideoNode of type HdmiCable which can be used to make a new patch connection</returns>
         private VideoNode? GetUnusedHdmiPatchNode()
         {
-            VideoNode? result = null;
+            _logger.LogTrace("MainWindow:GetUnusedHdmiPatchNode()");
 
-            foreach (NodeId nodeId in (NodeId[])Enum.GetValues(typeof(NodeId)))
+            VideoNode? result = null;
+            try
             {
-                if (Node.Type(nodeId) == NodeType.HdmiCable && !configuredNodes.ContainsKey(nodeId))
+                foreach (NodeId nodeId in (NodeId[])Enum.GetValues(typeof(NodeId)))
                 {
-                    result = new VideoNode(nodeId);
+                    if (Node.Type(nodeId) == NodeType.HdmiCable && !configuredNodes.ContainsKey(nodeId))
+                    {
+                        result = new VideoNode(nodeId);
+                    }
                 }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error trapped in MainWindow:GetUnusedHdmiPatchNode()");
             }
 
             return result;
@@ -1053,19 +1162,27 @@ namespace Mooseware.PatchPal
         /// </summary>
         private void SaveCurrentPatchConfiguration()
         {
-            PatchConfiguration.Settings?.PatchItems.Clear();
-            foreach (var patchNode in configuredNodes)
+            _logger.LogInformation("MainWindow:SaveCurrentPatchConfiguration()");
+            try
             {
-                ConfigurableItem patchItem = new()
+                PatchConfiguration.Settings?.PatchItems.Clear();
+                foreach (var patchNode in configuredNodes)
                 {
-                    NodeId = patchNode.Value.Id.ToString(),
-                    NodeType = patchNode.Value.Type.ToString(),
-                    Input = patchNode.Value.Input?.Id.ToString() ?? String.Empty,
-                    Output = patchNode.Value.Output?.Id.ToString() ?? String.Empty
-                };
-                PatchConfiguration.Settings?.PatchItems.Add(patchItem);
+                    ConfigurableItem patchItem = new()
+                    {
+                        NodeId = patchNode.Value.Id.ToString(),
+                        NodeType = patchNode.Value.Type.ToString(),
+                        Input = patchNode.Value.Input?.Id.ToString() ?? String.Empty,
+                        Output = patchNode.Value.Output?.Id.ToString() ?? String.Empty
+                    };
+                    PatchConfiguration.Settings?.PatchItems.Add(patchItem);
+                }
+                PatchConfiguration.Save();
             }
-            PatchConfiguration.Save();
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error trapped in MainWindow:SaveCurrentPatchConfiguration()");
+            }
         }
 
         /// <summary>
@@ -1073,288 +1190,297 @@ namespace Mooseware.PatchPal
         /// </summary>
         private void DrawMatrixCanvas()
         {
-            // Draw the matrix canvas
+            _logger.LogTrace("MainWindow:DrawMatrixCanvas()");
 
-            MatrixCanvas.Children.Clear();
-
-            var destinationNodes = hardwiredNodes.Values
-                .Where(n => n.Type == NodeType.VideoDestination)
-                .OrderBy(n => n.DisplayOrder)
-                .ToList();
-
-            // Go through all of the video destinations and get a list of everything
-            // that has a MxOutput upstream of it somehow.
-            List<VideoNode> connectedMxDestinations = new();
-            foreach (var node in destinationNodes)
+            try
             {
-                VideoNode? upstreamMxOutput = node.UpstreamMxOutput;
-                if (upstreamMxOutput != null && connectedMxDestinations.Contains(upstreamMxOutput) == false)
+                // Draw the matrix canvas
+
+                MatrixCanvas.Children.Clear();
+
+                var destinationNodes = hardwiredNodes.Values
+                    .Where(n => n.Type == NodeType.VideoDestination)
+                    .OrderBy(n => n.DisplayOrder)
+                    .ToList();
+
+                // Go through all of the video destinations and get a list of everything
+                // that has a MxOutput upstream of it somehow.
+                List<VideoNode> connectedMxDestinations = new();
+                foreach (var node in destinationNodes)
                 {
-                    connectedMxDestinations.Add(upstreamMxOutput);
-                }
-            }
-
-            // Figure out which NodeType.MxOutput nodes are not connected and should be shown as parked.
-            List<VideoNode> parkedMxOutputNodes = new();
-
-            var mxOutNodes = hardwiredNodes.Values
-                .Where(n => n.Type == NodeType.MxOutput)
-                .OrderBy(n => n.DisplayOrder)
-                .ToList();
-            // Append any parked outputs to parkedMxOutNodes
-            foreach (var mxOutNode in mxOutNodes)
-            {
-                if (connectedMxDestinations.Contains(mxOutNode) == false)
-                {
-                    parkedMxOutputNodes.Add(mxOutNode);
-                }
-            }
-
-            var mxInNodes = hardwiredNodes.Values
-            .Where(n => n.Type == NodeType.MxInput)
-            .OrderByDescending(n => n.DisplayOrder)     // Descending so that parked nodes are in logical order
-            .ToList();
-
-            var sourceNodes = hardwiredNodes.Values
-                .Where(n => n.Type == NodeType.VideoSource)
-                .OrderBy(n => n.DisplayOrder)
-                .ToList();
-
-            var mxPicks = configuredNodes.Values
-                .Where(n => n.Type == NodeType.MxSelection)
-                .OrderBy(n => n.DisplayOrder)
-                .ToList();
-
-            // How big are the source/destination node rectangles?
-            // Make enough room for the longest list of nodes (sources or destinations)
-            // But also allow for margins of 10% on either side and in between
-            // And also allow for 1/2 a column for parked MX inputs and outputs
-            double matrixNodeWidth = MatrixCanvas.ActualWidth / (((Math.Max(destinationNodes.Count, sourceNodes.Count) + 0.5) * 1.1) + 0.1);
-            double matrixNodeHeight = matrixNodeWidth * 0.5;
-            double matrixNodeDiameter = matrixNodeWidth * 0.25;
-            double matrixMargin = matrixNodeWidth * 0.1;
-            double destinationRowTop = matrixMargin;                    // For now use as a simplifying assumption.
-            double sourceRowTop = MatrixCanvas.ActualHeight - matrixNodeHeight - matrixMargin;
-            double matrixLabelFontSize = matrixMargin * 1.25;           // For now use as a simplifying assumption.
-            double mxNodeLabelFontSize = matrixLabelFontSize * 0.75;    // Arbitrary
-
-            // TODO: Figure out how to avoid bailing due to zero width on the matrix tab.
-            if (matrixLabelFontSize == 0)
-            {
-                return;
-            }
-
-            // Display the pertinent video nodes...
-            int column = 0;
-            foreach (var videoNode in destinationNodes)
-            {
-                column++;
-                Grid destinationContainer = BuildSourceDestinationNode(videoNode, matrixNodeWidth, matrixNodeHeight, matrixLabelFontSize);
-                Canvas.SetTop(destinationContainer, destinationRowTop);
-                Canvas.SetLeft(destinationContainer, ((column - 1) * (matrixNodeWidth + matrixMargin)) + matrixMargin);
-                MatrixCanvas.Children.Add(destinationContainer);
-            }
-            column = 0;
-            foreach (var videoNode in sourceNodes)
-            {
-                column++;
-                Grid sourceContainer = BuildSourceDestinationNode(videoNode, matrixNodeWidth, matrixNodeHeight, matrixLabelFontSize);
-                Canvas.SetTop(sourceContainer, sourceRowTop);
-                Canvas.SetLeft(sourceContainer, ((column - 1) * (matrixNodeWidth + matrixMargin)) + matrixMargin);
-                MatrixCanvas.Children.Add(sourceContainer);
-            }
-
-            // Handle painting of the MxOutput nodes that are connected.
-            foreach (var destVideoNode in destinationNodes)
-            {
-                var videoNode = destVideoNode.UpstreamMxOutput;
-                if (videoNode != null)
-                {
-                    // NOTE: This is more complicated than for MxOutputs because there is no single, reliable .Downstream
-                    //       property on VideoNode.  However, if we know that we're starting with a MxOutput then we
-                    //       know that we can reliably follow the .Output all the way to the end.
-                    Grid mxOutContainer = BuildMxInOutNode(videoNode, matrixNodeDiameter, matrixLabelFontSize);
-                    VideoNode? downstream = videoNode.Output;
-                    if (downstream != null)
+                    VideoNode? upstreamMxOutput = node.UpstreamMxOutput;
+                    if (upstreamMxOutput != null && connectedMxDestinations.Contains(upstreamMxOutput) == false)
                     {
-                        Point location = GetMatrixNodeCnxPoint(destVideoNode.Id);
-                        Canvas.SetTop(mxOutContainer, location.Y);
-                        Canvas.SetLeft(mxOutContainer, location.X - (matrixNodeDiameter / 2));
+                        connectedMxDestinations.Add(upstreamMxOutput);
                     }
+                }
+
+                // Figure out which NodeType.MxOutput nodes are not connected and should be shown as parked.
+                List<VideoNode> parkedMxOutputNodes = new();
+
+                var mxOutNodes = hardwiredNodes.Values
+                    .Where(n => n.Type == NodeType.MxOutput)
+                    .OrderBy(n => n.DisplayOrder)
+                    .ToList();
+                // Append any parked outputs to parkedMxOutNodes
+                foreach (var mxOutNode in mxOutNodes)
+                {
+                    if (connectedMxDestinations.Contains(mxOutNode) == false)
+                    {
+                        parkedMxOutputNodes.Add(mxOutNode);
+                    }
+                }
+
+                var mxInNodes = hardwiredNodes.Values
+                .Where(n => n.Type == NodeType.MxInput)
+                .OrderByDescending(n => n.DisplayOrder)     // Descending so that parked nodes are in logical order
+                .ToList();
+
+                var sourceNodes = hardwiredNodes.Values
+                    .Where(n => n.Type == NodeType.VideoSource)
+                    .OrderBy(n => n.DisplayOrder)
+                    .ToList();
+
+                var mxPicks = configuredNodes.Values
+                    .Where(n => n.Type == NodeType.MxSelection)
+                    .OrderBy(n => n.DisplayOrder)
+                    .ToList();
+
+                // How big are the source/destination node rectangles?
+                // Make enough room for the longest list of nodes (sources or destinations)
+                // But also allow for margins of 10% on either side and in between
+                // And also allow for 1/2 a column for parked MX inputs and outputs
+                double matrixNodeWidth = MatrixCanvas.ActualWidth / (((Math.Max(destinationNodes.Count, sourceNodes.Count) + 0.5) * 1.1) + 0.1);
+                double matrixNodeHeight = matrixNodeWidth * 0.5;
+                double matrixNodeDiameter = matrixNodeWidth * 0.25;
+                double matrixMargin = matrixNodeWidth * 0.1;
+                double destinationRowTop = matrixMargin;                    // For now use as a simplifying assumption.
+                double sourceRowTop = MatrixCanvas.ActualHeight - matrixNodeHeight - matrixMargin;
+                double matrixLabelFontSize = matrixMargin * 1.25;           // For now use as a simplifying assumption.
+                double mxNodeLabelFontSize = matrixLabelFontSize * 0.75;    // Arbitrary
+
+                // TODO: Figure out how to avoid bailing due to zero width on the matrix tab.
+                if (matrixLabelFontSize == 0)
+                {
+                    return;
+                }
+
+                // Display the pertinent video nodes...
+                int column = 0;
+                foreach (var videoNode in destinationNodes)
+                {
+                    column++;
+                    Grid destinationContainer = BuildSourceDestinationNode(videoNode, matrixNodeWidth, matrixNodeHeight, matrixLabelFontSize);
+                    Canvas.SetTop(destinationContainer, destinationRowTop);
+                    Canvas.SetLeft(destinationContainer, ((column - 1) * (matrixNodeWidth + matrixMargin)) + matrixMargin);
+                    MatrixCanvas.Children.Add(destinationContainer);
+                }
+                column = 0;
+                foreach (var videoNode in sourceNodes)
+                {
+                    column++;
+                    Grid sourceContainer = BuildSourceDestinationNode(videoNode, matrixNodeWidth, matrixNodeHeight, matrixLabelFontSize);
+                    Canvas.SetTop(sourceContainer, sourceRowTop);
+                    Canvas.SetLeft(sourceContainer, ((column - 1) * (matrixNodeWidth + matrixMargin)) + matrixMargin);
+                    MatrixCanvas.Children.Add(sourceContainer);
+                }
+
+                // Handle painting of the MxOutput nodes that are connected.
+                foreach (var destVideoNode in destinationNodes)
+                {
+                    var videoNode = destVideoNode.UpstreamMxOutput;
+                    if (videoNode != null)
+                    {
+                        // NOTE: This is more complicated than for MxOutputs because there is no single, reliable .Downstream
+                        //       property on VideoNode.  However, if we know that we're starting with a MxOutput then we
+                        //       know that we can reliably follow the .Output all the way to the end.
+                        Grid mxOutContainer = BuildMxInOutNode(videoNode, matrixNodeDiameter, matrixLabelFontSize);
+                        VideoNode? downstream = videoNode.Output;
+                        if (downstream != null)
+                        {
+                            Point location = GetMatrixNodeCnxPoint(destVideoNode.Id);
+                            Canvas.SetTop(mxOutContainer, location.Y);
+                            Canvas.SetLeft(mxOutContainer, location.X - (matrixNodeDiameter / 2));
+                        }
+                        MatrixCanvas.Children.Add(mxOutContainer);
+                    }
+                }
+
+                // Handle painting of parked MxOutput nodes.
+                int parkedMxOutputsSoFar = 0;
+                foreach (var parkedMxOutputNode in parkedMxOutputNodes)
+                {
+                    Grid mxOutContainer = BuildMxInOutNode(parkedMxOutputNode, matrixNodeDiameter, matrixLabelFontSize);
+                    Canvas.SetTop(mxOutContainer, destinationRowTop + (parkedMxOutputsSoFar * (matrixNodeDiameter + matrixMargin)));
+                    Canvas.SetLeft(mxOutContainer, MatrixCanvas.ActualWidth - (matrixNodeDiameter + (2 * matrixMargin)));
                     MatrixCanvas.Children.Add(mxOutContainer);
+                    parkedMxOutputsSoFar++;
                 }
-            }
 
-            // Handle painting of parked MxOutput nodes.
-            int parkedMxOutputsSoFar = 0;
-            foreach (var parkedMxOutputNode in parkedMxOutputNodes)
-            {
-                Grid mxOutContainer = BuildMxInOutNode(parkedMxOutputNode, matrixNodeDiameter, matrixLabelFontSize);
-                Canvas.SetTop(mxOutContainer, destinationRowTop + (parkedMxOutputsSoFar * (matrixNodeDiameter + matrixMargin)));
-                Canvas.SetLeft(mxOutContainer, MatrixCanvas.ActualWidth - (matrixNodeDiameter + (2 * matrixMargin)));
-                MatrixCanvas.Children.Add(mxOutContainer);
-                parkedMxOutputsSoFar++;
-            }
-
-            // Handle the painting of MxInput nodes
-            int parkedMxInputs = 0;
-            foreach (var videoNode in mxInNodes)
-            {
-                Grid mxInContainer = BuildMxInOutNode(videoNode, matrixNodeDiameter, matrixLabelFontSize);
-                // Where does this node belong? Is it on a Source or is it parked?
-                if (videoNode.Upstream != null && videoNode.Upstream.Type == NodeType.VideoSource)
+                // Handle the painting of MxInput nodes
+                int parkedMxInputs = 0;
+                foreach (var videoNode in mxInNodes)
                 {
-                    Point location = GetMatrixNodeCnxPoint(videoNode.Upstream.Id);
-                    Canvas.SetTop(mxInContainer, location.Y - matrixNodeDiameter);
-                    Canvas.SetLeft(mxInContainer, location.X - (matrixNodeDiameter / 2));
-                }
-                else
-                {
-                    // Parked.
-                    parkedMxInputs++;
-                    Canvas.SetTop(mxInContainer, MatrixCanvas.ActualHeight - (parkedMxInputs * (matrixNodeDiameter + matrixMargin)));
-                    Canvas.SetLeft(mxInContainer, MatrixCanvas.ActualWidth - (matrixNodeDiameter + (2 * matrixMargin)));
-                }
-                MatrixCanvas.Children.Add(mxInContainer);
-            }
-
-            // Display the direct connection video node lines
-            foreach (var videoNode in destinationNodes)
-            {
-                if (!IsEligibleForMatrixSelection(videoNode)
-                    && videoNode.Upstream != null
-                    && videoNode.Upstream.Type == NodeType.VideoSource)
-                {
-                    // This is a direct connection (via patching)
-                    var start = GetMatrixNodeCnxPoint(videoNode.Upstream.Id);
-                    var finish = GetMatrixNodeCnxPoint(videoNode.Id);
-                    Line mxDirect = new()
+                    Grid mxInContainer = BuildMxInOutNode(videoNode, matrixNodeDiameter, matrixLabelFontSize);
+                    // Where does this node belong? Is it on a Source or is it parked?
+                    if (videoNode.Upstream != null && videoNode.Upstream.Type == NodeType.VideoSource)
                     {
-                        StrokeThickness = MxPickUnselectedStrokeThickness,
-                        Stroke = Brushes.SlateGray,
-                        X1 = start.X,
-                        Y1 = start.Y,
-                        X2 = finish.X,
-                        Y2 = finish.Y,
-                        StrokeEndLineCap = PenLineCap.Round
-                    };
-
-                    MatrixCanvas.Children.Add(mxDirect);
-                }
-            }
-
-            // Display the matrix selection video nodes (lines)
-            foreach (var mxSelection in mxPicks)
-            {
-                Point startingPoint = new();
-                Point endingPoint = new();
-
-                if (mxSelection.Input != null)
-                {
-                    startingPoint = GetMatrixNodeCnxPoint(mxSelection.Input.Id);
-                }
-
-                // Get every output for the selection.
-                var mxSelectedOutputs = hardwiredNodes
-                    .Where(n => n.Value.UpstreamMxOutput == mxSelection.Output 
-                             && n.Value.Type == NodeType.VideoDestination);
-                foreach (var mxSelectionOutput in mxSelectedOutputs)
-                {
-                    endingPoint = GetMatrixNodeCnxPoint(mxSelectionOutput.Value.Id);
-                    // Adjust the Y value of the end point to account for node diameter.
-                    endingPoint.Y += matrixNodeDiameter / 2.0; ;
-
-                    // Work out the adjustment to get from the centre of each mx node to it's edge.
-                    // NOTE: The starting point is always below the ending point (so Y is bigger at bottom, thanks WPF).
-                    // NOTE: If the line is vertical then it's just the Y adjusted by the radius.
-                    double dX = 0.0;
-                    double dY = 0.0;
-
-                    if (Math.Abs(endingPoint.X - startingPoint.X) < 0.1)
-                    {
-                        dY = matrixNodeDiameter / 2.0;      // dX = 0.0. No need for ATAN
+                        Point location = GetMatrixNodeCnxPoint(videoNode.Upstream.Id);
+                        Canvas.SetTop(mxInContainer, location.Y - matrixNodeDiameter);
+                        Canvas.SetLeft(mxInContainer, location.X - (matrixNodeDiameter / 2));
                     }
                     else
                     {
-                        // We need to work out the slope angle.
-                        // Remember: endingPoint.Y < startingPoint.Y at all times, but the Y axis is inverted in WPF Canvas.
-                        // Therefore take starting Y less ending Y, not the other way around.
-                        double theta = Math.Atan2((startingPoint.Y - endingPoint.Y), (endingPoint.X - startingPoint.X));
-                        dX = (matrixNodeDiameter / 2.0) * Math.Cos(theta);
-                        dY = (matrixNodeDiameter / 2.0) * Math.Sin(theta);
+                        // Parked.
+                        parkedMxInputs++;
+                        Canvas.SetTop(mxInContainer, MatrixCanvas.ActualHeight - (parkedMxInputs * (matrixNodeDiameter + matrixMargin)));
+                        Canvas.SetLeft(mxInContainer, MatrixCanvas.ActualWidth - (matrixNodeDiameter + (2 * matrixMargin)));
+                    }
+                    MatrixCanvas.Children.Add(mxInContainer);
+                }
+
+                // Display the direct connection video node lines
+                foreach (var videoNode in destinationNodes)
+                {
+                    if (!IsEligibleForMatrixSelection(videoNode)
+                        && videoNode.Upstream != null
+                        && videoNode.Upstream.Type == NodeType.VideoSource)
+                    {
+                        // This is a direct connection (via patching)
+                        var start = GetMatrixNodeCnxPoint(videoNode.Upstream.Id);
+                        var finish = GetMatrixNodeCnxPoint(videoNode.Id);
+                        Line mxDirect = new()
+                        {
+                            StrokeThickness = MxPickUnselectedStrokeThickness,
+                            Stroke = Brushes.SlateGray,
+                            X1 = start.X,
+                            Y1 = start.Y,
+                            X2 = finish.X,
+                            Y2 = finish.Y,
+                            StrokeEndLineCap = PenLineCap.Round
+                        };
+
+                        MatrixCanvas.Children.Add(mxDirect);
+                    }
+                }
+
+                // Display the matrix selection video nodes (lines)
+                foreach (var mxSelection in mxPicks)
+                {
+                    Point startingPoint = new();
+                    Point endingPoint = new();
+
+                    if (mxSelection.Input != null)
+                    {
+                        startingPoint = GetMatrixNodeCnxPoint(mxSelection.Input.Id);
                     }
 
-                    Line mxPick = new()
+                    // Get every output for the selection.
+                    var mxSelectedOutputs = hardwiredNodes
+                        .Where(n => n.Value.UpstreamMxOutput == mxSelection.Output
+                                 && n.Value.Type == NodeType.VideoDestination);
+                    foreach (var mxSelectionOutput in mxSelectedOutputs)
                     {
-                        StrokeThickness = MxPickUnselectedStrokeThickness,
-                        Stroke = Brushes.Black,
-                        X1 = startingPoint.X + dX,
-                        Y1 = startingPoint.Y - dY,
-                        X2 = endingPoint.X - dX,
-                        Y2 = endingPoint.Y + dY,
-                        Name = mxSelection.Id.ToString() + MxSelectTag,
-                        StrokeEndLineCap = PenLineCap.Round
-                    };
+                        endingPoint = GetMatrixNodeCnxPoint(mxSelectionOutput.Value.Id);
+                        // Adjust the Y value of the end point to account for node diameter.
+                        endingPoint.Y += matrixNodeDiameter / 2.0; ;
 
-                    MatrixCanvas.Children.Add(mxPick);
+                        // Work out the adjustment to get from the centre of each mx node to it's edge.
+                        // NOTE: The starting point is always below the ending point (so Y is bigger at bottom, thanks WPF).
+                        // NOTE: If the line is vertical then it's just the Y adjusted by the radius.
+                        double dX = 0.0;
+                        double dY = 0.0;
+
+                        if (Math.Abs(endingPoint.X - startingPoint.X) < 0.1)
+                        {
+                            dY = matrixNodeDiameter / 2.0;      // dX = 0.0. No need for ATAN
+                        }
+                        else
+                        {
+                            // We need to work out the slope angle.
+                            // Remember: endingPoint.Y < startingPoint.Y at all times, but the Y axis is inverted in WPF Canvas.
+                            // Therefore take starting Y less ending Y, not the other way around.
+                            double theta = Math.Atan2((startingPoint.Y - endingPoint.Y), (endingPoint.X - startingPoint.X));
+                            dX = (matrixNodeDiameter / 2.0) * Math.Cos(theta);
+                            dY = (matrixNodeDiameter / 2.0) * Math.Sin(theta);
+                        }
+
+                        Line mxPick = new()
+                        {
+                            StrokeThickness = MxPickUnselectedStrokeThickness,
+                            Stroke = Brushes.Black,
+                            X1 = startingPoint.X + dX,
+                            Y1 = startingPoint.Y - dY,
+                            X2 = endingPoint.X - dX,
+                            Y2 = endingPoint.Y + dY,
+                            Name = mxSelection.Id.ToString() + MxSelectTag,
+                            StrokeEndLineCap = PenLineCap.Round
+                        };
+
+                        MatrixCanvas.Children.Add(mxPick);
+                    }
+                }
+
+                // Show the video node selections in the summary group box
+                // Note: Don't do this if the configuration isn't loaded yet.
+                if (configuredNodes.ContainsKey(NodeId.MxPick1))
+                {
+                    // Include some visual cue when a matrix selection is irrelevant due to lack of connection from a source all the way to a destination.
+                    const string DontMatter = "X";
+                    if (HasEndToEndConnection(NodeId.MxPick1))
+                    {
+                        MatrixSource1SelectionText.Text = configuredNodes[NodeId.MxPick1].Input?.Nickname;
+                        MatrixDestination1Indicator.Background = ActiveMatrixConnection;
+                    }
+                    else
+                    {
+                        MatrixSource1SelectionText.Text = DontMatter;
+                        MatrixDestination1Indicator.Background = InactiveMatrixConnection;
+                    }
+
+                    if (HasEndToEndConnection(NodeId.MxPick2))
+                    {
+                        MatrixSource2SelectionText.Text = configuredNodes[NodeId.MxPick2].Input?.Nickname;
+                        MatrixDestination2Indicator.Background = ActiveMatrixConnection;
+                    }
+                    else
+                    {
+                        MatrixSource2SelectionText.Text = DontMatter;
+                        MatrixDestination2Indicator.Background = InactiveMatrixConnection;
+                    }
+
+                    if (HasEndToEndConnection(NodeId.MxPick3))
+                    {
+                        MatrixSource3SelectionText.Text = configuredNodes[NodeId.MxPick3].Input?.Nickname;
+                        MatrixDestination3Indicator.Background = ActiveMatrixConnection;
+                    }
+                    else
+                    {
+                        MatrixSource3SelectionText.Text = DontMatter;
+                        MatrixDestination3Indicator.Background = InactiveMatrixConnection;
+                    }
+
+                    if (HasEndToEndConnection(NodeId.MxPick4))
+                    {
+                        MatrixSource4SelectionText.Text = configuredNodes[NodeId.MxPick4].Input?.Nickname;
+                        MatrixDestination4Indicator.Background = ActiveMatrixConnection;
+                    }
+                    else
+                    {
+                        MatrixSource4SelectionText.Text = DontMatter;
+                        MatrixDestination4Indicator.Background = InactiveMatrixConnection;
+                    }
+
+                    MatrixSource1Indicator.Background = MatrixDestination1Indicator.Background;
+                    MatrixSource2Indicator.Background = MatrixDestination2Indicator.Background;
+                    MatrixSource3Indicator.Background = MatrixDestination3Indicator.Background;
+                    MatrixSource4Indicator.Background = MatrixDestination4Indicator.Background;
+
                 }
             }
-
-            // Show the video node selections in the summary group box
-            // Note: Don't do this if the configuration isn't loaded yet.
-            if (configuredNodes.ContainsKey(NodeId.MxPick1))
+            catch (Exception ex)
             {
-                // Include some visual cue when a matrix selection is irrelevant due to lack of connection from a source all the way to a destination.
-                const string DontMatter = "X";
-                if (HasEndToEndConnection(NodeId.MxPick1))
-                {
-                    MatrixSource1SelectionText.Text = configuredNodes[NodeId.MxPick1].Input?.Nickname;
-                    MatrixDestination1Indicator.Background = ActiveMatrixConnection;
-                }
-                else
-                {
-                    MatrixSource1SelectionText.Text = DontMatter;
-                    MatrixDestination1Indicator.Background = InactiveMatrixConnection;
-                }
-
-                if (HasEndToEndConnection(NodeId.MxPick2))
-                {
-                    MatrixSource2SelectionText.Text = configuredNodes[NodeId.MxPick2].Input?.Nickname;
-                    MatrixDestination2Indicator.Background = ActiveMatrixConnection;
-                }
-                else
-                {
-                    MatrixSource2SelectionText.Text = DontMatter;
-                    MatrixDestination2Indicator.Background = InactiveMatrixConnection;
-                }
-
-                if (HasEndToEndConnection(NodeId.MxPick3))
-                {
-                    MatrixSource3SelectionText.Text = configuredNodes[NodeId.MxPick3].Input?.Nickname;
-                    MatrixDestination3Indicator.Background = ActiveMatrixConnection;
-                }
-                else
-                {
-                    MatrixSource3SelectionText.Text = DontMatter;
-                    MatrixDestination3Indicator.Background = InactiveMatrixConnection;
-                }
-
-                if (HasEndToEndConnection(NodeId.MxPick4))
-                {
-                    MatrixSource4SelectionText.Text = configuredNodes[NodeId.MxPick4].Input?.Nickname;
-                    MatrixDestination4Indicator.Background = ActiveMatrixConnection;
-                }
-                else
-                {
-                    MatrixSource4SelectionText.Text = DontMatter;
-                    MatrixDestination4Indicator.Background = InactiveMatrixConnection;
-                }
-
-                MatrixSource1Indicator.Background = MatrixDestination1Indicator.Background;
-                MatrixSource2Indicator.Background = MatrixDestination2Indicator.Background;
-                MatrixSource3Indicator.Background = MatrixDestination3Indicator.Background;
-                MatrixSource4Indicator.Background = MatrixDestination4Indicator.Background;
-
+                _logger.LogError(ex, "Error trapped in MainWindow:DrawMatrixCanvas()");
             }
         }
 
@@ -1366,58 +1492,68 @@ namespace Mooseware.PatchPal
         /// <returns>True if there is a connection downstream all the way to a VideoDestination, false otherwise.</returns>
         private bool HasEndToEndConnection(NodeId nodeId)
         {
+            _logger.LogTrace("MainWindow:HasEndToEndConnection()");
+            
             bool result = false;
             VideoNode? videoNode = null;
 
-            // Figure out which node we're starting from...
-            if (hardwiredNodes.ContainsKey(nodeId))
+            try
             {
-                videoNode = hardwiredNodes[nodeId];
-            }
-            else if (configuredNodes.ContainsKey(nodeId))
-            {
-                videoNode = configuredNodes[nodeId];
-            }
-
-            // Does the node have an upstream source?
-            if (videoNode != null
-                && (videoNode.Type == NodeType.VideoSource
-                || (videoNode.Upstream != null && videoNode.Upstream.Type == NodeType.VideoSource)))
-            {
-                // OK on the upstream side. What about downstream?
-                while (videoNode != null)
+                // Figure out which node we're starting from...
+                if (hardwiredNodes.ContainsKey(nodeId))
                 {
-                    // Go downstream until we find a destination.
-                    if (videoNode.GetType() == typeof(MatrixInputNode))
+                    videoNode = hardwiredNodes[nodeId];
+                }
+                else if (configuredNodes.ContainsKey(nodeId))
+                {
+                    videoNode = configuredNodes[nodeId];
+                }
+
+                // Does the node have an upstream source?
+                if (videoNode != null
+                    && (videoNode.Type == NodeType.VideoSource
+                    || (videoNode.Upstream != null && videoNode.Upstream.Type == NodeType.VideoSource)))
+                {
+                    // OK on the upstream side. What about downstream?
+                    while (videoNode != null)
                     {
-                        // Look at each of the outputs in turn until we find at least one good one...
-                        foreach (var output in ((MatrixInputNode)videoNode).Outputs)
+                        // Go downstream until we find a destination.
+                        if (videoNode.GetType() == typeof(MatrixInputNode))
                         {
-                            if (HasEndToEndConnection(output.Id))
+                            // Look at each of the outputs in turn until we find at least one good one...
+                            foreach (var output in ((MatrixInputNode)videoNode).Outputs)
                             {
-                                result = true;
-                                videoNode = null;   // Time to break from the loop.
-                                break;
+                                if (HasEndToEndConnection(output.Id))
+                                {
+                                    result = true;
+                                    videoNode = null;   // Time to break from the loop.
+                                    break;
+                                }
                             }
-                        }
-                        // If we get this far without a positive result, then one is not forthcoming.
-                        videoNode = null;   // Time to break from the loop.
-                    }
-                    else
-                    {
-                        // Look at the output...
-                        if (videoNode.Output != null && videoNode.Output.Type == NodeType.VideoDestination)
-                        {
-                            result = true;
-                            break;
+                            // If we get this far without a positive result, then one is not forthcoming.
+                            videoNode = null;   // Time to break from the loop.
                         }
                         else
                         {
-                            videoNode = videoNode.Output;
+                            // Look at the output...
+                            if (videoNode.Output != null && videoNode.Output.Type == NodeType.VideoDestination)
+                            {
+                                result = true;
+                                break;
+                            }
+                            else
+                            {
+                                videoNode = videoNode.Output;
+                            }
                         }
                     }
                 }
             }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error trapped in MainWindow:HasEndToEndConnection()");
+            }
+
             return result;
         }
 
@@ -1763,32 +1899,51 @@ namespace Mooseware.PatchPal
 
         private void MatrixTabItem_SizeChanged(object sender, SizeChangedEventArgs e)
         {
-            if (MatrixTabItem.IsSelected)
+            _logger.LogTrace("MainWindow:MatrixTabItem_SizeChanged()");
+
+            try
             {
-                DrawMatrixCanvas();
+                if (MatrixTabItem.IsSelected)
+                {
+                    DrawMatrixCanvas();
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error trapped in MainWindow:MatrixTabItem_SizeChanged()");
             }
         }
 
         private void MatrixCanvas_MouseDown(object sender, MouseButtonEventArgs e)
         {
-            // Figure out what on the Matrix Canvas was clicked and then set the selection accordingly.
-            // Where was the click? Was it on a source or destination node?
-            if (e.Source.GetType() == typeof(Rectangle))
+            _logger.LogTrace("MainWindow:MatrixCanvas_MouseDown()");
+
+            try
             {
-                Rectangle clickedRectangle = (Rectangle)(e.Source);
-                if (Enum.TryParse<NodeId>(clickedRectangle.Name.Replace(NodeOutlineTag, string.Empty), out NodeId clickedNodeId))
+                // Figure out what on the Matrix Canvas was clicked and then set the selection accordingly.
+                // Where was the click? Was it on a source or destination node?
+                if (e.Source.GetType() == typeof(Rectangle))
                 {
-                    if (hardwiredNodes.ContainsKey(clickedNodeId))
+                    Rectangle clickedRectangle = (Rectangle)(e.Source);
+                    if (Enum.TryParse<NodeId>(clickedRectangle.Name.Replace(NodeOutlineTag, string.Empty), out NodeId clickedNodeId))
                     {
-                        HandleMatrixSelection(clickedNodeId);
+                        if (hardwiredNodes.ContainsKey(clickedNodeId))
+                        {
+                            HandleMatrixSelection(clickedNodeId);
+                        }
                     }
                 }
+                else
+                {
+                    // No selection...
+                    HandleMatrixSelection(NodeId.Undefined);
+                }
             }
-            else
+            catch (Exception ex)
             {
-                // No selection...
-                HandleMatrixSelection(NodeId.Undefined);
+                _logger.LogError(ex, "Error trapped in MainWindow:MatrixCanvas_MouseDown()");
             }
+
         }
     }
 }

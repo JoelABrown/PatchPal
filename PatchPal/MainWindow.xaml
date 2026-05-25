@@ -7,8 +7,9 @@
         mc:Ignorable="d"
         Title="Patch Pal - Video Matrix and Patch Panel Guide"
         Height="500"
-        Width="1400"
-        Loaded="Window_Loaded">
+        Width="1500"
+        Loaded="Window_Loaded"
+        Icon="/Resources/PatchPal_Icon.ico">
     <Grid>
         <Grid.ColumnDefinitions>
             <ColumnDefinition Width="1*" />

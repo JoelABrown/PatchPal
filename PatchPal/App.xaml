@@ -1,8 +1,7 @@
 ﻿<Application x:Class="Mooseware.PatchPal.App"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             xmlns:local="clr-namespace:Mooseware.PatchPal"
-             StartupUri="MainWindow.xaml">
+             xmlns:local="clr-namespace:Mooseware.PatchPal">
     <Application.Resources>
          
     </Application.Resources>
