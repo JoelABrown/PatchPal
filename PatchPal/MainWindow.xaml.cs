@@ -1834,6 +1834,8 @@ namespace Mooseware.PatchPal
         /// <param name="selectedNodeId">The NodeId of the VideoNode that was clicked in the UI</param>
         private void HandleMatrixSelection(NodeId selectedNodeId)
         {
+            _logger.LogDebug("HandleMatrixSelection(NodeId={nodeId}", selectedNodeId.ToString());
+
             // Show the matrix selection state.
 
             VideoNode? selectedNode = null;
@@ -1953,17 +1955,32 @@ namespace Mooseware.PatchPal
                 // Where was the click? Was it on a source or destination node?
                 if (e.Source.GetType() == typeof(Rectangle))
                 {
+                    _logger.LogDebug("MatrixCanvas_MouseDown: Rectangle clicked");
+
                     Rectangle clickedRectangle = (Rectangle)(e.Source);
                     if (Enum.TryParse<NodeId>(clickedRectangle.Name.Replace(NodeOutlineTag, string.Empty), out NodeId clickedNodeId))
                     {
+                        _logger.LogDebug("MatrixCanvas_MouseDown: Rectangle Name={nodeName}", clickedNodeId);
                         if (hardwiredNodes.ContainsKey(clickedNodeId))
                         {
                             HandleMatrixSelection(clickedNodeId);
+                        }
+                        else
+                        {
+                            _logger.LogDebug("MatrixCanvas_MouseDown: No Rectangle with that ID found");
                         }
                     }
                 }
                 else
                 {
+                    if (e.Source is not null)
+                    {
+                        _logger.LogDebug("MatrixCanvas_MouseDown: No selection. Source Type=({srctype})", e.Source.GetType().ToString());
+                    }
+                    else
+                    {
+                        _logger.LogDebug("MatrixCanvas_MouseDown: Null Source");
+                    }
                     // No selection...
                     HandleMatrixSelection(NodeId.Undefined);
                 }
