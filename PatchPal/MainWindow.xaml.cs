@@ -1834,14 +1834,19 @@ namespace Mooseware.PatchPal
         /// <param name="selectedNodeId">The NodeId of the VideoNode that was clicked in the UI</param>
         private void HandleMatrixSelection(NodeId selectedNodeId)
         {
-            _logger.LogDebug("HandleMatrixSelection(NodeId={nodeId}", selectedNodeId.ToString());
+            _logger.LogDebug("HandleMatrixSelection(NodeId={nodeId})", selectedNodeId.ToString());
 
             // Show the matrix selection state.
 
             VideoNode? selectedNode = null;
             if (hardwiredNodes.ContainsKey(selectedNodeId))
             {
+                _logger.LogDebug("HandleMatrixSelection: NodeId={nodeId} found in hardwiredNodes", selectedNodeId.ToString());
                 selectedNode = hardwiredNodes[selectedNodeId];
+            }
+            else
+            {
+                _logger.LogDebug("HandleMatrixSelection: NodeId={nodeId} NOT found in hardwiredNodes", selectedNodeId.ToString());
             }
             // Otherwise nothing was selected.
 
@@ -1852,14 +1857,22 @@ namespace Mooseware.PatchPal
             {
                 if (selectedNode.Type == NodeType.VideoDestination)
                 {
+                    _logger.LogDebug("HandleMatrixSelection: Type==NodeType.VideoDestination");
+
                     if (_selectedSinkMatrix != NodeId.Undefined && _selectedSinkMatrix != selectedNode.Id)
                     {
+                        _logger.LogDebug("HandleMatrixSelection: Reset the visual selection of the previously selected destination: {previousSink}", _selectedSinkMatrix.ToString());
+
                         // Reset the visual selection of the previously selected destination...
                         Rectangle? rectangle = FindGridRectangleByPatchId(MatrixCanvas, _selectedSinkMatrix);
                         if (rectangle != null)
                         {
                             rectangle.Stroke = UnselectedPatchBrush;
                             rectangle.StrokeThickness = MatrixUnselectedStrokeThickness;
+                        }
+                        else
+                        {
+                            _logger.LogDebug("HandleMatrixSelection: UNABLE to set rectangle for visual reset");
                         }
                         _selectedSinkMatrix = NodeId.Undefined;
                     }
@@ -1875,8 +1888,20 @@ namespace Mooseware.PatchPal
                                 rectangle.Stroke = SelectedPatchBrush;
                                 rectangle.StrokeThickness = MatrixSelectedStrokeThickness;
                             }
+                            else
+                            {
+                                _logger.LogDebug("HandleMatrixSelection: UNABLE to set rectangle for new destination");
+                            }
                             _selectedSinkMatrix = selectedNode.Id;
                         }
+                        else
+                        {
+                            _logger.LogDebug("HandleMatrixSelection: selected node type=={nodeType} NOT VideoDestination", selectedNode.Type);
+                        }
+                    }
+                    else
+                    {
+                        _logger.LogDebug("HandleMatrixSelection: new destination is NOT ELIGIBLE for selection");
                     }
                 }
                 else if (selectedNode.Type == NodeType.VideoSource || _selectedSinkMatrix != NodeId.Undefined)
@@ -1925,6 +1950,10 @@ namespace Mooseware.PatchPal
                     }
                 }
 
+            }
+            else
+            {
+                _logger.LogDebug("HandleMatrixSelection: NO NODE to process");
             }
         }
 
