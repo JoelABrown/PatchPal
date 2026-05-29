@@ -1867,6 +1867,8 @@ namespace Mooseware.PatchPal
                         Rectangle? rectangle = FindGridRectangleByPatchId(MatrixCanvas, _selectedSinkMatrix);
                         if (rectangle != null)
                         {
+                            _logger.LogDebug("HandleMatrixSelection: Rectangle selected for visual reset");
+
                             rectangle.Stroke = UnselectedPatchBrush;
                             rectangle.StrokeThickness = MatrixUnselectedStrokeThickness;
                         }
@@ -1885,6 +1887,8 @@ namespace Mooseware.PatchPal
                             Rectangle? rectangle = FindGridRectangleByPatchId(MatrixCanvas, selectedNode.Id);
                             if (rectangle != null)
                             {
+                                _logger.LogDebug("HandleMatrixSelection: Rectangle selected for selection indication");
+
                                 rectangle.Stroke = SelectedPatchBrush;
                                 rectangle.StrokeThickness = MatrixSelectedStrokeThickness;
                             }
@@ -1907,12 +1911,15 @@ namespace Mooseware.PatchPal
                 else if (selectedNode.Type == NodeType.VideoSource || _selectedSinkMatrix != NodeId.Undefined)
                 {
                     // Make the appropriate MX Selection
+                    _logger.LogDebug("HandleMatrixSelection: Type=={selNodeType}. Make MX selection", selectedNode.Type);
 
                     // Find the MxSelection that is upstream of the selected source...
                     VideoNode? upstreamMxPick = null;
                     VideoNode? nextUp = hardwiredNodes[_selectedSinkMatrix].Input;
                     while (nextUp != null)
                     {
+                        _logger.LogDebug("HandleMatrixSelection: Looking upstream to node {upstreamNode}, Type=={upType}", nextUp.Id, nextUp.Type);
+
                         if (nextUp.Type == NodeType.MxSelection)
                         {
                             upstreamMxPick = nextUp;
@@ -1922,11 +1929,15 @@ namespace Mooseware.PatchPal
                     }
                     if (upstreamMxPick != null)
                     {
+                        _logger.LogDebug("HandleMatrixSelection: Upstream node is {upstreamNode}", upstreamMxPick.Id);
+
                         // Find the MxInput that is downstream of the selected source
                         VideoNode? downstreamMxInput = null;
                         VideoNode? nextDown = selectedNode.Output;
                         while (nextDown != null)
                         {
+                            _logger.LogDebug("HandleMatrixSelection: Looking downstream to node {downstreamNode}, Type=={downType}", nextDown.Id, nextDown.Type);
+
                             if (nextDown.Type == NodeType.MxInput)
                             {
                                 downstreamMxInput = nextDown;
@@ -1937,16 +1948,29 @@ namespace Mooseware.PatchPal
                         if (downstreamMxInput != null)
                         {
                             // Change the MxPick to the new selected source.
+                            _logger.LogDebug("HandleMatrixSelection: Disconnecting input for {upMxPick}", upstreamMxPick.Id);
+                            _logger.LogDebug("HandleMatrixSelection: Setting input for {upMxPick} to {newInput}", upstreamMxPick.Id, downstreamMxInput.Id);
+
                             upstreamMxPick.DisconnectInput();
                             upstreamMxPick.SetInput(downstreamMxInput);
                             ((MatrixInputNode)downstreamMxInput).AddOutput(upstreamMxPick);
 
                             // Persist this change.
+                            _logger.LogDebug("HandleMatrixSelection: SaveConfiguration()");
                             SaveCurrentPatchConfiguration();
 
                             // Redraw the matrix Canvas
+                            _logger.LogDebug("HandleMatrixSelection: DrawMatrixCanvas()");
                             DrawMatrixCanvas();
                         }
+                        else
+                        {
+                            _logger.LogDebug("HandleMatrixSelection: Downstream node is NULL");
+                        }
+                    }
+                    else
+                    {
+                        _logger.LogDebug("HandleMatrixSelection: Upstream node is NULL");
                     }
                 }
 
